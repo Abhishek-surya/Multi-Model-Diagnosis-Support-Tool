@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 
 # Load UCI Cleveland dataset
 df = pd.read_csv(
@@ -39,3 +40,23 @@ print((df == "?").sum())
 
 print("\nDuplicate rows:")
 print(df.duplicated().sum())
+
+# Replace '?' with NaN
+df = df.replace("?", np.nan)
+
+print("\nMissing values after replacement:")
+print(df.isnull().sum())
+
+# Fill missing categorical values with mode
+df["ca"] = df["ca"].fillna(df["ca"].mode()[0])
+df["thal"] = df["thal"].fillna(df["thal"].mode()[0])
+
+# Convert columns to numeric
+df["ca"] = pd.to_numeric(df["ca"])
+df["thal"] = pd.to_numeric(df["thal"])
+
+print("\nMissing values after imputation:")
+print(df.isnull().sum())
+
+print("\nData types after conversion:")
+print(df.dtypes)
