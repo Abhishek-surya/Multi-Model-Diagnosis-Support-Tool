@@ -60,3 +60,16 @@ print(df.isnull().sum())
 
 print("\nData types after conversion:")
 print(df.dtypes)
+
+# Convert target into binary classification
+df["target"] = (df["target"] > 0).astype(int)
+
+# Separate features and target
+X = df.drop("target", axis=1)
+y = df["target"]
+
+print("\nTarget distribution:")
+print(y.value_counts().sort_index())
+
+print("\nFeatures shape:", X.shape)
+print("Target shape:", y.shape)
