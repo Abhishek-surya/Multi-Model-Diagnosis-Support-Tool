@@ -3,6 +3,8 @@ import numpy as np
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.model_selection import train_test_split
+from sklearn.dummy import DummyClassifier
+from sklearn.metrics import accuracy_score
 
 # Load UCI Cleveland dataset
 df = pd.read_csv(
@@ -120,3 +122,20 @@ X_test_processed = preprocessor.transform(X_test)
 
 print("\nProcessed training data shape:", X_train_processed.shape)
 print("Processed testing data shape:", X_test_processed.shape)
+
+
+# Create Majority Class Baseline Model
+baseline_model = DummyClassifier(strategy="most_frequent")
+
+# Train the baseline model
+baseline_model.fit(X_train_processed, y_train)
+
+# Make predictions on test data
+y_pred_baseline = baseline_model.predict(X_test_processed)
+
+# Evaluate baseline model
+baseline_accuracy = accuracy_score(y_test, y_pred_baseline)
+
+print("\n--- Majority Class Baseline Model ---")
+print("Majority class:", baseline_model.classes_[baseline_model.class_prior_.argmax()])
+print("Baseline Accuracy:", baseline_accuracy)
