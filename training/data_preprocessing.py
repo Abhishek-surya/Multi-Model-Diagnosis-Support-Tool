@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.model_selection import train_test_split
 
 # Load UCI Cleveland dataset
 df = pd.read_csv(
@@ -96,3 +97,26 @@ preprocessor = ColumnTransformer(
 )
 
 print("\nPreprocessing pipeline created successfully!")
+
+
+# Split data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(
+    X,
+    y,
+    test_size=0.2,
+    random_state=42,
+    stratify=y
+)
+
+print("\nTraining data shape:", X_train.shape)
+print("Testing data shape:", X_test.shape)
+
+
+# Fit preprocessor on training data and transform it
+X_train_processed = preprocessor.fit_transform(X_train)
+
+# Transform test data using the already fitted preprocessor
+X_test_processed = preprocessor.transform(X_test)
+
+print("\nProcessed training data shape:", X_train_processed.shape)
+print("Processed testing data shape:", X_test_processed.shape)
