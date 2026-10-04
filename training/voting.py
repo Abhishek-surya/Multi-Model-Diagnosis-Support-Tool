@@ -8,6 +8,7 @@ from sklearn.metrics import (
     f1_score,
     confusion_matrix
 )
+from sklearn.calibration import CalibratedClassifierCV
 
 from training.data_split import prepare_data
 
@@ -21,14 +22,16 @@ def train_voting_classifier():
         random_state=42
     )
 
-    svm_model = SVC(
+    svm_model = CalibratedClassifierCV(
+    estimator=SVC(
+        # RBF allows non-linear decision boundaries.
         kernel="rbf",
-
-        # Required for soft voting because VotingClassifier
-        # needs probability estimates from SVM.
-        probability=True,
-
         random_state=42
+    ),
+
+    # Convert the SVM decision scores into probabilities
+    # that can be used by soft voting.
+    ensemble=False
     )
 
     random_forest_model = RandomForestClassifier(
