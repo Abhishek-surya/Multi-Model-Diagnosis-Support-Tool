@@ -30,7 +30,7 @@ def run_cross_validation():
         )
     }
 
-    # Soft voting needs probability estimates from SVM.
+    # SVM needs calibrated probabilities for soft voting.
     calibrated_svm = CalibratedClassifierCV(
         estimator=SVC(
             kernel="rbf",
@@ -39,7 +39,34 @@ def run_cross_validation():
         ensemble=False
     )
 
-    voting_model = VotingClassifier(
+    hard_voting_model = VotingClassifier(
+        estimators=[
+            (
+                "lr",
+                LogisticRegression(
+                    max_iter=1000,
+                    random_state=42
+                )
+            ),
+            (
+                "svm",
+                SVC(
+                    kernel="rbf",
+                    random_state=42
+                )
+            ),
+            (
+                "rf",
+                RandomForestClassifier(
+                    n_estimators=100,
+                    random_state=42
+                )
+            )
+        ],
+        voting="hard"
+    )
+
+    soft_voting_model = VotingClassifier(
         estimators=[
             (
                 "lr",
@@ -60,13 +87,16 @@ def run_cross_validation():
         voting="soft"
     )
 
-    models["Voting Classifier"] = voting_model
+    models["Hard Voting"] = hard_voting_model
+    models["Soft Voting"] = soft_voting_model
 
     cv = StratifiedKFold(
         n_splits=5,
         shuffle=True,
         random_state=42
     )
+
+    results = {}
 
     for name, model in models.items():
 
@@ -80,7 +110,6 @@ def run_cross_validation():
             y_train = y.iloc[train_index]
             y_validation = y.iloc[validation_index]
 
-            # Fit preprocessing only on the training fold.
             preprocessor = create_preprocessor()
 
             X_train_processed = preprocessor.fit_transform(X_train)
@@ -97,14 +126,21 @@ def run_cross_validation():
 
             scores.append(score)
 
+        mean_score = sum(scores) / len(scores)
+
+        results[name] = mean_score
+
         print(f"\n--- {name} ---")
 
         for i, score in enumerate(scores, start=1):
             print(f"Fold {i} Accuracy: {score:.4f}")
 
-        mean_score = sum(scores) / len(scores)
-
         print(f"Mean CV Accuracy: {mean_score:.4f}")
+
+    print("\n=== CV Comparison ===")
+
+    for name, score in results.items():
+        print(f"{name}: {score:.4f}")
 
 
 if __name__ == "__main__":
