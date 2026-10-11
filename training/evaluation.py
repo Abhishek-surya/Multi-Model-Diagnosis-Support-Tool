@@ -1,56 +1,89 @@
-from sklearn.linear_model import LogisticRegression
-from sklearn.svm import SVC
-from sklearn.ensemble import RandomForestClassifier
-
+import numpy as np
 from sklearn.metrics import (
     accuracy_score,
+    confusion_matrix,
+    f1_score,
     precision_score,
     recall_score,
-    f1_score,
-    confusion_matrix
+    roc_auc_score,
 )
 
 from training.data_split import prepare_data
+from training.individual_models import get_individual_models
+from training.voting import get_voting_models
 
 
-def evaluate_models():
-    X_train, X_test, y_train, y_test = prepare_data()
+def calculate_metrics(y_true, y_pred, y_prob=None):
+    cm = confusion_matrix(y_true, y_pred)
+    tn, fp, fn, tp = cm.ravel()
+    specificity = float(tn / (tn + fp)) if (tn + fp) > 0 else 0.0
 
-    models = {
-        "Logistic Regression": LogisticRegression(
-            max_iter=1000,
-            random_state=42
-        ),
-        "SVM": SVC(
-            kernel="rbf",
-            random_state=42
-        ),
-        "Random Forest": RandomForestClassifier(
-            n_estimators=100,
-            random_state=42
-        )
+    auc = None
+    if y_prob is not None:
+        try:
+            auc = float(roc_auc_score(y_true, y_prob))
+        except Exception:
+            auc = None
+
+    return {
+        "accuracy": float(accuracy_score(y_true, y_pred)),
+        "precision": float(precision_score(y_true, y_pred, zero_division=0)),
+        "recall": float(recall_score(y_true, y_pred, zero_division=0)),
+        "specificity": specificity,
+        "f1": float(f1_score(y_true, y_pred, zero_division=0)),
+        "confusion_matrix": cm,
+        "roc_auc": auc
     }
 
-    for name, model in models.items():
 
-        model.fit(X_train, y_train)
+def evaluate_fitted_pipeline(model, X_eval, y_eval, name="Model", verbose=True):
+    y_pred = model.predict(X_eval)
 
-        y_pred = model.predict(X_test)
+    y_prob = None
+    if hasattr(model, "predict_proba"):
+        try:
+            y_prob = model.predict_proba(X_eval)[:, 1]
+        except Exception:
+            pass
+    elif hasattr(model, "decision_function"):
+        try:
+            y_prob = model.decision_function(X_eval)
+        except Exception:
+            pass
 
-        accuracy = accuracy_score(y_test, y_pred)
-        precision = precision_score(y_test, y_pred)
-        recall = recall_score(y_test, y_pred)
-        f1 = f1_score(y_test, y_pred)
-        cm = confusion_matrix(y_test, y_pred)
+    metrics = calculate_metrics(y_eval, y_pred, y_prob)
 
+    if verbose:
         print(f"\n--- {name} ---")
-        print("Accuracy :", accuracy)
-        print("Precision:", precision)
-        print("Recall   :", recall)
-        print("F1 Score :", f1)
+        print(f"Accuracy   : {metrics['accuracy']:.4f}")
+        print(f"Precision  : {metrics['precision']:.4f}")
+        print(f"Recall     : {metrics['recall']:.4f}")
+        print(f"Specificity: {metrics['specificity']:.4f}")
+        print(f"F1 Score   : {metrics['f1']:.4f}")
+        if metrics["roc_auc"] is not None:
+            print(f"ROC-AUC    : {metrics['roc_auc']:.4f}")
         print("Confusion Matrix:")
-        print(cm)
+        print(metrics["confusion_matrix"])
+
+    return metrics
+
+
+def evaluate_models_on_test():
+    X_train, X_test, y_train, y_test = prepare_data()
+
+    models = {}
+    models.update(get_individual_models())
+    models.update(get_voting_models())
+
+    print("\n=== Final Test Evaluation (Held-Out 61 Samples) ===")
+    results = {}
+    for name, model in models.items():
+        # Fit on full training set, evaluate on untouched test set
+        model.fit(X_train, y_train)
+        results[name] = evaluate_fitted_pipeline(model, X_test, y_test, name=name)
+
+    return results
 
 
 if __name__ == "__main__":
-    evaluate_models()
+    evaluate_models_on_test()

@@ -1,132 +1,60 @@
-from sklearn.linear_model import LogisticRegression
-from sklearn.svm import SVC
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.ensemble import RandomForestClassifier, VotingClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.pipeline import Pipeline
+from sklearn.svm import SVC
 
-from sklearn.metrics import (
-    accuracy_score,
-    precision_score,
-    recall_score,
-    f1_score,
-    confusion_matrix
-)
-
+from training.data_preprocessing import create_preprocessor
 from training.data_split import prepare_data
 
 
-def evaluate_voting_model(name, model, X_train, X_test, y_train, y_test):
-    model.fit(X_train, y_train)
+def get_voting_models():
+    """
+    Returns Hard Voting and Soft Voting ensemble pipelines.
+    - Hard Voting: selects the majority vote class among LR, SVM, and RF.
+    - Soft Voting: averages predicted probabilities.
+      Uses CalibratedClassifierCV on SVM so all estimators output calibrated probabilities.
+    """
+    lr = LogisticRegression(max_iter=1000, random_state=42)
+    svm = SVC(kernel="rbf", random_state=42)
+    rf = RandomForestClassifier(n_estimators=100, random_state=42)
 
-    y_pred = model.predict(X_test)
-
-    accuracy = accuracy_score(y_test, y_pred)
-    precision = precision_score(y_test, y_pred)
-    recall = recall_score(y_test, y_pred)
-    f1 = f1_score(y_test, y_pred)
-    cm = confusion_matrix(y_test, y_pred)
-
-    print(f"\n--- {name} ---")
-    print("Accuracy :", accuracy)
-    print("Precision:", precision)
-    print("Recall   :", recall)
-    print("F1 Score :", f1)
-    print("Confusion Matrix:")
-    print(cm)
-
-    return {
-        "accuracy": accuracy,
-        "precision": precision,
-        "recall": recall,
-        "f1": f1
-    }
-
-
-def train_voting_classifiers():
-    X_train, X_test, y_train, y_test = prepare_data()
-
-    logistic_model = LogisticRegression(
-        max_iter=1000,
-        random_state=42
-    )
-
-    svm_model = SVC(
-        kernel="rbf",
-        random_state=42
-    )
-
-    random_forest_model = RandomForestClassifier(
-        n_estimators=100,
-        random_state=42
-    )
-
-    # Hard voting uses the predicted class from each model.
-    hard_voting_model = VotingClassifier(
-        estimators=[
-            ("lr", logistic_model),
-            ("svm", svm_model),
-            ("rf", random_forest_model)
-        ],
-        voting="hard"
-    )
-
-    # Soft voting requires probability estimates from every model.
+    # Calibrated SVM for soft voting probability support
     calibrated_svm = CalibratedClassifierCV(
-        estimator=SVC(
-            kernel="rbf",
-            random_state=42
-        ),
+        estimator=SVC(kernel="rbf", random_state=42),
         ensemble=False
     )
 
-    soft_voting_model = VotingClassifier(
-        estimators=[
-            (
-                "lr",
-                LogisticRegression(
-                    max_iter=1000,
-                    random_state=42
-                )
-            ),
-            ("svm", calibrated_svm),
-            (
-                "rf",
-                RandomForestClassifier(
-                    n_estimators=100,
-                    random_state=42
-                )
-            )
-        ],
+    hard_voting = VotingClassifier(
+        estimators=[("lr", lr), ("svm", svm), ("rf", rf)],
+        voting="hard"
+    )
+
+    soft_voting = VotingClassifier(
+        estimators=[("lr", lr), ("svm", calibrated_svm), ("rf", rf)],
         voting="soft"
     )
 
-    hard_results = evaluate_voting_model(
-        "Hard Voting",
-        hard_voting_model,
-        X_train,
-        X_test,
-        y_train,
-        y_test
-    )
+    return {
+        "Hard Voting": Pipeline([
+            ("preprocessor", create_preprocessor()),
+            ("classifier", hard_voting)
+        ]),
+        "Soft Voting": Pipeline([
+            ("preprocessor", create_preprocessor()),
+            ("classifier", soft_voting)
+        ])
+    }
 
-    soft_results = evaluate_voting_model(
-        "Soft Voting",
-        soft_voting_model,
-        X_train,
-        X_test,
-        y_train,
-        y_test
-    )
 
-    print("\n=== Voting Comparison ===")
-    print(
-        f"Hard Voting Accuracy: "
-        f"{hard_results['accuracy']:.4f}"
-    )
-    print(
-        f"Soft Voting Accuracy: "
-        f"{soft_results['accuracy']:.4f}"
-    )
+# Aliases for compatibility
+get_voting_pipelines = get_voting_models
+get_calibrated_svm = lambda: CalibratedClassifierCV(estimator=SVC(kernel="rbf", random_state=42), ensemble=False)
 
 
 if __name__ == "__main__":
-    train_voting_classifiers()
+    X_train, _, y_train, _ = prepare_data()
+    models = get_voting_models()
+    for name, model in models.items():
+        model.fit(X_train, y_train)
+        print(f"Successfully fitted pipeline: {name}")

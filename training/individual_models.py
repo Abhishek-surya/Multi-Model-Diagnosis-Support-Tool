@@ -1,45 +1,41 @@
-from sklearn.linear_model import LogisticRegression
-from sklearn.svm import SVC
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score
+from sklearn.linear_model import LogisticRegression
+from sklearn.pipeline import Pipeline
+from sklearn.svm import SVC
 
+from training.data_preprocessing import create_preprocessor
 from training.data_split import prepare_data
 
 
-def train_and_evaluate_models():
-    X_train, X_test, y_train, y_test = prepare_data()
-
-    models = {
-        "Logistic Regression": LogisticRegression(
-            max_iter=1000,
-            random_state=42
-        ),
-        "SVM": SVC(
-            kernel="rbf",
-            random_state=42
-        ),
-        "Random Forest": RandomForestClassifier(
-            n_estimators=100,
-            random_state=42
-        )
+def get_individual_models():
+    """
+    Returns the 3 individual classifiers.
+    Each model is wrapped in a Pipeline with learned preprocessing
+    to ensure zero data leakage during cross-validation and testing.
+    """
+    return {
+        "Logistic Regression": Pipeline([
+            ("preprocessor", create_preprocessor()),
+            ("classifier", LogisticRegression(max_iter=1000, random_state=42))
+        ]),
+        "SVM": Pipeline([
+            ("preprocessor", create_preprocessor()),
+            ("classifier", SVC(kernel="rbf", random_state=42))
+        ]),
+        "Random Forest": Pipeline([
+            ("preprocessor", create_preprocessor()),
+            ("classifier", RandomForestClassifier(n_estimators=100, random_state=42))
+        ])
     }
 
-    results = {}
 
-    for name, model in models.items():
-        model.fit(X_train, y_train)
-
-        y_pred = model.predict(X_test)
-
-        accuracy = accuracy_score(y_test, y_pred)
-
-        results[name] = accuracy
-
-        print(f"\n--- {name} ---")
-        print("Accuracy:", accuracy)
-
-    return results
+# Alias for compatibility
+get_individual_pipelines = get_individual_models
 
 
 if __name__ == "__main__":
-    train_and_evaluate_models()
+    X_train, _, y_train, _ = prepare_data()
+    models = get_individual_models()
+    for name, model in models.items():
+        model.fit(X_train, y_train)
+        print(f"Successfully fitted pipeline: {name}")

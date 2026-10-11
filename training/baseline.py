@@ -1,26 +1,22 @@
 from sklearn.dummy import DummyClassifier
 from sklearn.metrics import accuracy_score
-
 from training.data_split import prepare_data
 
 
-# Get preprocessed train and test data
-X_train, X_test, y_train, y_test = prepare_data()
+def evaluate_baseline():
+    X_train, X_test, y_train, y_test = prepare_data()
 
-# Create baseline model
-baseline_model = DummyClassifier(
-    strategy="most_frequent"
-)
+    baseline = DummyClassifier(strategy="most_frequent")
+    baseline.fit(X_train, y_train)
 
-# Train model
-baseline_model.fit(X_train, y_train)
+    y_pred = baseline.predict(X_test)
+    acc = accuracy_score(y_test, y_pred)
 
-# Predict on test data
-y_pred = baseline_model.predict(X_test)
+    print("\n--- Majority Class Baseline Model ---")
+    print(f"Majority class    : {baseline.classes_[0]} (No Disease)")
+    print(f"Baseline Accuracy : {acc:.4f}")
+    return acc
 
-# Calculate accuracy
-accuracy = accuracy_score(y_test, y_pred)
 
-print("\n--- Majority Class Baseline Model ---")
-print("Majority class:", baseline_model.classes_[0])
-print("Baseline Accuracy:", accuracy)
+if __name__ == "__main__":
+    evaluate_baseline()

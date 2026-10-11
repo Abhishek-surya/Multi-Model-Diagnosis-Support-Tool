@@ -122,53 +122,96 @@ The exact preprocessing and encoding strategy will be implemented as part of the
 
 ---
 
-## 🔬 Data Science Pipeline
+## 🔬 Data Science Pipeline & Experiment Workflow
+
+The machine-learning pipeline follows a methodologically rigorous, leakage-safe protocol:
 
 ```text
-Data Acquisition
-       ↓
-Data Cleaning
-       ↓
-Exploratory Data Analysis
-       ↓
-Feature Preprocessing
-       ↓
-Train/Test Split
-       ↓
-Model Training
-       ↓
-Cross-Validation
-       ↓
-Ensemble Construction
-       ↓
-Model Evaluation
-       ↓
-Model Saving
-       ↓
-API Integration
-       ↓
-Web Application
+Raw Data (Cleveland UCI)
+          ↓
+Target Binarization (0 → No Disease, 1-4 → Disease)
+          ↓
+Stratified Train/Test Split (80% Train [242] / 20% Test [61], random_state=42)
+          ↓
+Training-Only 5-Fold Stratified Cross-Validation (StratifiedKFold, random_state=42)
+  - Pipeline with ColumnTransformer fitted separately within each CV training fold
+  - Evaluates 5 Candidates: Logistic Regression, SVM (RBF), Random Forest, Hard Voting, Soft Voting
+          ↓
+Model Selection Based on Training CV (Highest Mean CV Accuracy / F1)
+          ↓
+Refit Selected Pipeline on Full Training Set (242 samples)
+          ↓
+Final Test Evaluation on Untouched Held-Out Test Set (61 samples)
+          ↓
+Persist Pipeline Artifacts (models/best_model_pipeline.joblib, models/soft_voting_pipeline.joblib)
 ```
 
-### Validation Strategy
+### 1. Eliminating Preprocessing Data Leakage
 
-The project uses an **80/20 train-test split**.
+In standard medical ML pipelines, computing preprocessing statistics (such as mean/median imputation, frequency imputation, or feature scaling) across the entire dataset before splitting causes **data leakage**, as distribution information from validation/test samples is inadvertently revealed to the model.
 
-Five-fold cross-validation is performed on the training data for model development and comparison.
-
-The final test set remains isolated for final evaluation.
+To prevent this:
+1. **Raw Cleaning Only**: Placeholder missing values (`'?'`) in columns `ca` and `thal` are converted to `np.nan`. **No global imputation is performed before the split.**
+2. **Unified scikit-learn Pipeline**: Imputation, scaling, and encoding are encapsulated inside a `ColumnTransformer` within each candidate's `Pipeline`:
+   - **Numerical Features** (`age`, `trestbps`, `chol`, `thalach`, `oldpeak`): `SimpleImputer(strategy='median')` followed by `StandardScaler()`.
+   - **Categorical Features** (`sex`, `cp`, `fbs`, `restecg`, `exang`, `slope`, `ca`, `thal`): `SimpleImputer(strategy='most_frequent')` followed by `OneHotEncoder(handle_unknown='ignore', sparse_output=False)`.
+3. **Fold-Level Isolation**: When executing 5-fold cross-validation, the `Pipeline` fits its `ColumnTransformer` **strictly on each fold's training split** and applies the learned transformations to that fold's validation split.
+4. **Final Test Isolation**: The final pipeline is fitted on all 242 training samples and evaluates against the held-out test set (61 samples) using those training parameters.
 
 ---
 
-## 📈 Evaluation Metrics
+### 2. Candidate Models & Probability Calibration
 
-The models and ensemble strategies will be evaluated using:
+The workflow evaluates five candidate architectures:
+1. **Logistic Regression**: `LogisticRegression(max_iter=1000, random_state=42)`
+2. **Support Vector Machine (SVM)**: `SVC(kernel='rbf', random_state=42)`
+3. **Random Forest**: `RandomForestClassifier(n_estimators=100, random_state=42)`
+4. **Hard Voting Ensemble**: Combines predictions from LR, SVM, and RF using majority voting.
+5. **Soft Voting Ensemble**: Combines predicted probabilities across estimators. To guarantee valid probability estimates without test leakage, SVM is wrapped in `CalibratedClassifierCV(estimator=SVC(...), ensemble=False)`, which learns isotonic/sigmoid calibration internally via cross-validation without using deprecated parameters.
 
-* **Sensitivity / Recall**
-* **Specificity**
-* **F1 Score**
+All five candidates are evaluated across the **exact same 5 stratified folds** on training data.
 
-These metrics provide a more informative evaluation than accuracy alone, particularly for a healthcare-oriented classification problem.
+---
+
+### 3. Model Selection vs. Final Test Evaluation
+
+* **Model Comparison & Selection**: Model performance is compared **solely using 5-fold CV metrics on training data**. The held-out test set is never inspected or used for hyperparameter selection.
+* **Final Test Evaluation**: Once the winning candidate is chosen (or for final ensemble evaluation), the pipeline is refitted on all 242 training samples and evaluated on the untouched 61 test samples.
+* **Methodology Note**: If hyperparameter tuning is repeatedly guided by a single held-out test set, the test set becomes biased. For academic rigor, testing must occur exactly once, or a **nested cross-validation** scheme must be employed.
+
+---
+
+## 📊 Experimental Results
+
+### Training-Only 5-Fold Cross-Validation (242 Samples)
+
+| Candidate Model | Mean CV Accuracy | CV Precision | CV Recall | CV F1 Score |
+| :--- | :---: | :---: | :---: | :---: |
+| **Logistic Regression** | **0.8471 ± 0.0100** | **0.8768 ± 0.0542** | 0.7834 ± 0.0459 | **0.8245 ± 0.0069** |
+| **SVM (RBF Kernel)** | 0.8139 ± 0.0235 | 0.8303 ± 0.0742 | 0.7648 ± 0.0797 | 0.7893 ± 0.0271 |
+| **Random Forest** | 0.8181 ± 0.0307 | 0.8173 ± 0.0405 | **0.7826 ± 0.0981** | 0.7948 ± 0.0469 |
+| **Hard Voting Ensemble** | 0.8181 ± 0.0162 | 0.8363 ± 0.0658 | 0.7648 ± 0.0797 | 0.7927 ± 0.0249 |
+| **Soft Voting Ensemble** | 0.8222 ± 0.0289 | 0.8394 ± 0.0743 | 0.7739 ± 0.0775 | 0.7990 ± 0.0307 |
+
+*Winning model selected by training cross-validation:* **Logistic Regression** (highest mean CV accuracy: 0.8471, lowest variance: ±0.0100).
+
+### Final Evaluation on Untouched Held-Out Test Set (61 Samples)
+
+| Model | Test Accuracy | Precision | Recall | Specificity | F1 Score | ROC-AUC |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+| **Majority-Class Baseline** | 0.5410 | 0.0000 | 0.0000 | 1.0000 | 0.0000 | N/A |
+| **Logistic Regression (Selected)** | **0.8852** | **0.8387** | **0.9286** | **0.8485** | **0.8814** | **0.9665** |
+| **SVM (RBF Kernel)** | 0.8852 | 0.8387 | 0.9286 | 0.8485 | 0.8814 | 0.9643 |
+| **Random Forest** | 0.8689 | 0.8125 | 0.9286 | 0.8182 | 0.8667 | 0.9437 |
+| **Hard Voting Ensemble** | 0.8689 | 0.8125 | 0.9286 | 0.8182 | 0.8667 | N/A |
+| **Soft Voting Ensemble** | 0.8689 | 0.8125 | 0.9286 | 0.8182 | 0.8667 | 0.9610 |
+
+#### Confusion Matrix (Logistic Regression on Held-Out Test Set):
+```text
+                  Predicted Negative    Predicted Positive
+Actual Negative          28                     5
+Actual Positive           2                    26
+```
 
 ---
 
@@ -371,58 +414,84 @@ Hard Voting      Soft Voting
 
 ## 📁 Project Structure
 
-The repository is planned to follow a modular structure:
+The project organizes machine learning training, cross-validation, and testing modules cleanly with separation of concerns:
 
 ```text
-multi-model-diagnosis-support-tool/
-│
-├── backend/
-│   ├── main.py
-│   ├── api/
-│   │   ├── health.py
-│   │   ├── diagnosis.py
-│   │   └── model_info.py
-│   │
-│   ├── ml/
-│   │   ├── preprocessing.py
-│   │   ├── models.py
-│   │   └── voting.py
-│   │
-│   ├── schemas/
-│   │   └── patient.py
-│   │
-│   └── models/
-│       └── trained_model.pkl
-│
-├── frontend/
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── PatientForm.jsx
-│   │   │   ├── RiskCard.jsx
-│   │   │   └── ModelBreakdown.jsx
-│   │   │
-│   │   ├── pages/
-│   │   │   └── Dashboard.jsx
-│   │   │
-│   │   └── services/
-│   │       └── api.js
-│   │
-│   └── package.json
+Diagnosis-support-tool/
 │
 ├── data/
-│   └── README.md
+│   └── processed.cleveland.data    # UCI Cleveland Heart Disease dataset (303 rows)
 │
-├── notebooks/
-│   └── README.md
+├── training/
+│   ├── __init__.py
+│   ├── data_preprocessing.py       # Raw cleaning, NaN replacement, ColumnTransformer pipeline
+│   ├── data_split.py               # Reproducible 80/20 train/test split with stratification
+│   ├── individual_models.py        # Estimator factory & pipeline builders (LR, SVM, RF)
+│   ├── voting.py                   # Hard and Soft voting ensemble pipelines & calibrated SVM
+│   ├── cross_validation.py         # 5-fold CV across all 5 candidates on training data only
+│   ├── evaluation.py               # Standard metric calculations and test set evaluators
+│   ├── baseline.py                 # Majority-class DummyClassifier baseline
+│   └── run_experiment.py           # End-to-end experiment orchestrator
+│
+├── models/                         # Serialized trained pipelines (ready for inference)
+│   ├── best_model_pipeline.joblib  # Winning model pipeline (fitted preprocessor + classifier)
+│   ├── soft_voting_pipeline.joblib # Soft voting pipeline (with calibrated probabilities)
+│   └── trained_model.joblib        # Default production pipeline
 │
 ├── tests/
+│   └── test_workflow.py            # Automated tests verifying zero leakage & workflow rules
 │
-├── requirements.txt
-├── README.md
-└── .gitignore
+├── run_experiment.py               # Top-level experiment entry point
+├── requirements.txt                # Python dependencies
+└── README.md
 ```
 
-> The exact structure may change as implementation progresses.
+### Module Responsibilities
+
+* **`data_preprocessing.py`**: Loads raw data, sets column headers, converts `'?'` to `np.nan`, binarizes the target, and builds the `ColumnTransformer` (median imputation + scaling for numeric; mode imputation + one-hot encoding for categorical). Imputation is deferred to the pipeline to prevent data leakage.
+* **`data_split.py`**: Performs an 80/20 train/test split (`test_size=0.2, random_state=42, stratify=y`), producing 242 training and 61 test samples with verified zero index overlap.
+* **`individual_models.py`**: Defines candidate estimators (Logistic Regression, SVM RBF, Random Forest) and encapsulates them in leak-free `Pipeline` instances.
+* **`voting.py`**: Defines the Hard Voting and Soft Voting ensembles. Uses `CalibratedClassifierCV` for SVM to generate reliable probabilities without test leakage or deprecated parameters.
+* **`cross_validation.py`**: Evaluates all five candidate models using 5-fold stratified cross-validation on **training data only**. Uses the identical folds for all candidates and reports accuracy, precision, recall, and F1 (mean ± std). Selects the winning model based on CV.
+* **`evaluation.py`**: Computes accuracy, precision, recall, specificity, F1 score, confusion matrices, and ROC-AUC. Provides utilities to evaluate fitted pipelines on held-out test data.
+* **`baseline.py`**: Evaluates a majority-class `DummyClassifier` baseline on train and test sets (54.10% accuracy).
+* **`run_experiment.py`**: Orchestrates the complete end-to-end workflow, selects the winning model based on training CV, fits the pipeline on full training data, evaluates on the untouched test set, and saves fitted pipelines to `models/`.
+
+### How to Run
+
+1. **Run the Full Experiment**:
+   ```bash
+   python run_experiment.py
+   ```
+
+2. **Run Individual Steps**:
+   ```bash
+   # Preprocessing check
+   python -m training.data_preprocessing
+
+   # Train/test split check
+   python -m training.data_split
+
+   # Baseline model
+   python -m training.baseline
+
+   # 5-Fold Stratified Cross-Validation (Training only)
+   python -m training.cross_validation
+
+   # Individual model fitting
+   python -m training.individual_models
+
+   # Voting ensemble fitting
+   python -m training.voting
+
+   # Test set evaluation
+   python -m training.evaluation
+   ```
+
+3. **Run Automated Verification Tests**:
+   ```bash
+   python -m unittest tests/test_workflow.py
+   ```
 
 ---
 
