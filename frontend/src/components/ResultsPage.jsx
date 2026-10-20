@@ -33,7 +33,7 @@ export function ResultsPage({
           </span>
           <div className="results-header-actions">
             <span className="results-date">
-              Recorded: {new Date().toLocaleDateString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
+              Recorded: {new Date().toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
             </span>
             <button
               type="button"

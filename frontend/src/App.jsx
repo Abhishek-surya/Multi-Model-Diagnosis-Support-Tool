@@ -6,6 +6,7 @@ import { ResultsPage } from './components/ResultsPage';
 import { HistoryPage } from './components/HistoryPage';
 import { HealthOverviewPage } from './components/HealthOverviewPage';
 import { TipsPage } from './components/TipsPage';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 import {
   emptyForm,
@@ -148,13 +149,42 @@ export default function App() {
     };
 
     try {
-      const response = await fetch(`${API_BASE_URL}/predict`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      });
+      let response;
+      const primaryUrl = API_BASE_URL ? `${API_BASE_URL}/predict` : '/predict';
+
+      try {
+        response = await fetch(primaryUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+
+        // If relative proxy failed with 500/502/504 and API_BASE_URL wasn't overridden, try direct backend URL
+        if (!response.ok && response.status >= 500 && !API_BASE_URL) {
+          response = await fetch('http://127.0.0.1:8000/predict', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+          });
+        }
+      } catch (networkErr) {
+        // If relative fetch failed entirely (e.g. proxy unreachable), try direct backend URL
+        if (!API_BASE_URL) {
+          response = await fetch('http://127.0.0.1:8000/predict', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+          });
+        } else {
+          throw networkErr;
+        }
+      }
 
       const rawBody = await response.text();
       let data = null;
@@ -162,7 +192,7 @@ export default function App() {
         try {
           data = JSON.parse(rawBody);
         } catch {
-          throw new Error('Screening could not be completed. Unexpected response format.');
+          // not valid JSON
         }
       }
 
@@ -173,6 +203,8 @@ export default function App() {
           message = detail;
         } else if (Array.isArray(detail)) {
           message = detail.map((item) => item?.msg || 'Please check a form value.').join(' ');
+        } else if (response.status === 500) {
+          message = 'Backend prediction error (HTTP 500). Please ensure the backend is running with a valid model.';
         }
         throw new Error(message);
       }
@@ -186,7 +218,7 @@ export default function App() {
         /Failed to fetch|NetworkError|Load failed/i.test(err.message || '');
       setError(
         isNetworkError
-          ? 'Unable to reach the screening service. Please check your backend connection.'
+          ? 'Unable to reach the screening service. Please check that the FastAPI backend is running on http://127.0.0.1:8000.'
           : err.message || 'Unable to complete screening right now.'
       );
     } finally {
@@ -282,65 +314,67 @@ export default function App() {
         onToggleTheme={handleToggleTheme}
       />
 
-      <main className={`main ${page === 'overview' || page === 'tips' || page === 'home' || page === 'history' || page === 'results' ? 'wide' : ''}`}>
-        {page === 'home' && (
-          <HomePage
-            patientList={patientList}
-            onStart={() => goTo('assessment')}
-            onHistory={() => goTo('history')}
-            onOverview={() => goTo('overview')}
-            onOpenPatient={openPatientChart}
-          />
-        )}
+      <ErrorBoundary onReset={() => goTo('home')}>
+        <main className={`main ${page === 'overview' || page === 'tips' || page === 'home' || page === 'history' || page === 'results' ? 'wide' : ''}`}>
+          {page === 'home' && (
+            <HomePage
+              patientList={patientList}
+              onStart={() => goTo('assessment')}
+              onHistory={() => goTo('history')}
+              onOverview={() => goTo('overview')}
+              onOpenPatient={openPatientChart}
+            />
+          )}
 
-        {page === 'assessment' && (
-          <AssessmentPage
-            formData={formData}
-            fieldErrors={fieldErrors}
-            loading={loading}
-            error={error}
-            lastResult={result}
-            onChange={handleChange}
-            onSubmit={handleSubmit}
-            onLoadSample={loadSampleProfile}
-            onClear={clearForm}
-            onViewLastResult={() => goTo('results')}
-          />
-        )}
+          {page === 'assessment' && (
+            <AssessmentPage
+              formData={formData}
+              fieldErrors={fieldErrors}
+              loading={loading}
+              error={error}
+              lastResult={result}
+              onChange={handleChange}
+              onSubmit={handleSubmit}
+              onLoadSample={loadSampleProfile}
+              onClear={clearForm}
+              onViewLastResult={() => goTo('results')}
+            />
+          )}
 
-        {page === 'history' && (
-          <HistoryPage
-            charts={charts}
-            selectedId={historyPatientId || normalizePatientId(formData.patientId)}
-            onSelect={setHistoryPatientId}
-            onScreen={startNewAssessment}
-            onOpenLatest={(patientId) => openPatientChart(patientId)}
-            onOpenVisitReport={viewVisitReport}
-            onUpdateCharts={handleUpdateCharts}
-          />
-        )}
+          {page === 'history' && (
+            <HistoryPage
+              charts={charts}
+              selectedId={historyPatientId || normalizePatientId(formData.patientId)}
+              onSelect={setHistoryPatientId}
+              onScreen={startNewAssessment}
+              onOpenLatest={(patientId) => openPatientChart(patientId)}
+              onOpenVisitReport={viewVisitReport}
+              onUpdateCharts={handleUpdateCharts}
+            />
+          )}
 
-        {page === 'overview' && (
-          <HealthOverviewPage
-            formData={formData}
-            result={result}
-            onScreen={() => goTo('assessment')}
-          />
-        )}
+          {page === 'overview' && (
+            <HealthOverviewPage
+              formData={formData}
+              result={result}
+              onScreen={() => goTo('assessment')}
+            />
+          )}
 
-        {page === 'tips' && <TipsPage />}
+          {page === 'tips' && <TipsPage />}
 
-        {page === 'results' && result && (
-          <ResultsPage
-            result={result}
-            formData={formData}
-            priorVisitCount={(charts[normalizePatientId(formData.patientId)]?.visits.length || 1) - 1}
-            onHistory={() => goTo('history')}
-            onStartNew={startNewAssessment}
-            onOverview={() => goTo('overview')}
-          />
-        )}
-      </main>
+          {page === 'results' && result && (
+            <ResultsPage
+              result={result}
+              formData={formData}
+              priorVisitCount={(charts[normalizePatientId(formData.patientId)]?.visits.length || 1) - 1}
+              onHistory={() => goTo('history')}
+              onStartNew={startNewAssessment}
+              onOverview={() => goTo('overview')}
+            />
+          )}
+        </main>
+      </ErrorBoundary>
     </div>
   );
 }
