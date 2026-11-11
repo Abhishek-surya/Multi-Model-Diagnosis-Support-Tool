@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any, List, Tuple
 from sqlalchemy.orm import Session
-from backend.models import PatientModel, EncounterModel, PredictionModel
+from backend.models import PatientModel, EncounterModel, PredictionModel, ClinicianModel, utc_now
 
 
 def normalize_patient_id(val: str) -> str:
@@ -198,3 +198,54 @@ def import_bulk_charts(db: Session, charts: Dict[str, Any]) -> Tuple[int, int]:
             imported_visits += 1
 
     return imported_patients, imported_visits
+
+
+def get_or_create_clinician(
+    db: Session,
+    email: str,
+    name: str,
+    google_id: Optional[str] = None,
+    avatar_url: Optional[str] = None,
+    role: str = "Cardiologist / Clinician"
+) -> ClinicianModel:
+    """Finds or registers a clinician based on verified Google account details."""
+    clean_email = email.strip().lower()
+    clinician = db.query(ClinicianModel).filter(ClinicianModel.email == clean_email).first()
+
+    if not clinician and google_id:
+        clinician = db.query(ClinicianModel).filter(ClinicianModel.google_id == google_id).first()
+
+    if not clinician:
+        clinician = ClinicianModel(
+            email=clean_email,
+            name=name.strip(),
+            google_id=google_id,
+            avatar_url=avatar_url,
+            role=role,
+            last_login_at=utc_now()
+        )
+        db.add(clinician)
+        db.commit()
+        db.refresh(clinician)
+    else:
+        # Update name, avatar, or last login timestamp
+        updated = False
+        if name and clinician.name != name.strip():
+            clinician.name = name.strip()
+            updated = True
+        if avatar_url and clinician.avatar_url != avatar_url:
+            clinician.avatar_url = avatar_url
+            updated = True
+        if google_id and not clinician.google_id:
+            clinician.google_id = google_id
+            updated = True
+        clinician.last_login_at = utc_now()
+        db.commit()
+        db.refresh(clinician)
+
+    return clinician
+
+
+def get_clinician_by_email(db: Session, email: str) -> Optional[ClinicianModel]:
+    return db.query(ClinicianModel).filter(ClinicianModel.email == email.strip().lower()).first()
+

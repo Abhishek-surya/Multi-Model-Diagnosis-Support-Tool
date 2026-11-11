@@ -23,6 +23,7 @@ try:
         delete_patient,
         import_bulk_charts
     )
+    from backend.auth import router as auth_router
 except ImportError:
     from schemas import (
         HeartDiseaseInput,
@@ -40,6 +41,7 @@ except ImportError:
         delete_patient,
         import_bulk_charts
     )
+    from auth import router as auth_router
 
 # 1. Initialize FastAPI application
 app = FastAPI(
@@ -62,6 +64,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include Authentication Router (/api/auth)
+app.include_router(auth_router)
 
 # 3. Model Loading Logic
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
