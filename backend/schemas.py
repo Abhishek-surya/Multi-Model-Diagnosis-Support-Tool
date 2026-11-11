@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field
 
 
@@ -6,7 +6,20 @@ class HeartDiseaseInput(BaseModel):
     """
     13 input features required for heart disease risk prediction,
     matching the Cleveland dataset schema and preprocessing pipeline.
+    Optionally accepts patient_id and patient_name for automatic SQL database persistence.
     """
+    # Optional patient identification for persistence in SQL DB
+    patient_id: Optional[str] = Field(
+        default=None,
+        description="Unique patient identifier (e.g. 'PT-8801')",
+        examples=["PT-8801"]
+    )
+    patient_name: Optional[str] = Field(
+        default=None,
+        description="Patient full name (e.g. 'Robert Vance')",
+        examples=["Robert Vance"]
+    )
+
     age: float = Field(
         ...,
         ge=1.0,
@@ -89,3 +102,20 @@ class PredictionResponse(BaseModel):
     readable_result: str
     probability: Optional[float] = None
     probability_percentage: Optional[float] = None
+    risk_tier: Optional[str] = None
+    saved_to_db: Optional[bool] = False
+    encounter_id: Optional[int] = None
+
+
+class PatientSummaryResponse(BaseModel):
+    id: str
+    name: str
+    visits: int
+    latestResult: Optional[Dict[str, Any]] = None
+
+
+class BulkSyncResponse(BaseModel):
+    status: str
+    message: str
+    imported_patients: int
+    imported_visits: int
