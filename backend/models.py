@@ -133,3 +133,28 @@ class PredictionModel(Base):
             "risk_tier": self.risk_tier,
             "model_name": self.model_name
         }
+
+
+class ClinicianModel(Base):
+    __tablename__ = "clinicians"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    google_id = Column(String(128), unique=True, index=True, nullable=True)
+    email = Column(String(255), unique=True, index=True, nullable=False)
+    name = Column(String(255), nullable=False)
+    avatar_url = Column(String(512), nullable=True)
+    role = Column(String(64), default="Cardiologist / Clinician")
+    created_at = Column(DateTime(timezone=True), default=utc_now)
+    last_login_at = Column(DateTime(timezone=True), default=utc_now)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "email": self.email,
+            "name": self.name,
+            "avatarUrl": self.avatar_url,
+            "role": self.role,
+            "createdAt": self.created_at.isoformat() if self.created_at else None,
+            "lastLoginAt": self.last_login_at.isoformat() if self.last_login_at else None
+        }
+

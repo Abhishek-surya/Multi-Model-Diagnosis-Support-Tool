@@ -207,6 +207,35 @@ class TestDatabaseAndAPI(unittest.TestCase):
         self.assertEqual(patient.name, "Bulk Patient One")
         self.assertEqual(len(patient.encounters), 1)
 
+    def test_06_auth_endpoints(self):
+        """Verify authentication endpoints: config, dev-login, and me."""
+        # 1. Config endpoint
+        res_cfg = self.client.get("/api/auth/config")
+        self.assertEqual(res_cfg.status_code, 200)
+        self.assertIn("google_client_id", res_cfg.json())
+
+        # 2. Dev login
+        login_payload = {
+            "email": "dr.smith@cardio.org",
+            "name": "Dr. Jane Smith"
+        }
+        res_login = self.client.post("/api/auth/dev-login", json=login_payload)
+        self.assertEqual(res_login.status_code, 200)
+        data = res_login.json()
+        self.assertEqual(data.get("status"), "success")
+        self.assertEqual(data["user"]["email"], "dr.smith@cardio.org")
+        self.assertEqual(data["user"]["name"], "Dr. Jane Smith")
+
+        # 3. Me endpoint
+        res_me = self.client.get("/api/auth/me?email=dr.smith@cardio.org")
+        self.assertEqual(res_me.status_code, 200)
+        self.assertEqual(res_me.json()["email"], "dr.smith@cardio.org")
+
+        # 4. Google login with invalid token returns 401
+        res_google = self.client.post("/api/auth/google", json={"credential": "invalid-token-string"})
+        self.assertEqual(res_google.status_code, 401)
+
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -7,6 +7,8 @@ import { HistoryPage } from './components/HistoryPage';
 import { HealthOverviewPage } from './components/HealthOverviewPage';
 import { TipsPage } from './components/TipsPage';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { AuthModal } from './components/AuthModal';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 
 import {
   emptyForm,
@@ -23,10 +25,20 @@ import {
   saveTheme
 } from './utils/storage';
 
+import {
+  loadClinicianUser,
+  saveClinicianUser,
+  clearClinicianUser
+} from './utils/authStorage';
+
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? '';
+const INITIAL_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? '';
 
 export default function App() {
   const [theme, setTheme] = useState(() => loadTheme());
+  const [user, setUser] = useState(() => loadClinicianUser());
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [googleClientId, setGoogleClientId] = useState(INITIAL_CLIENT_ID);
   const [page, setPage] = useState('home');
   const [formData, setFormData] = useState(emptyForm);
   const [fieldErrors, setFieldErrors] = useState({});
@@ -78,6 +90,30 @@ export default function App() {
       isMounted = false;
     };
   }, []);
+
+  // Fetch Google OAuth Client ID config from backend if not set in frontend env
+  useEffect(() => {
+    if (!googleClientId) {
+      fetch('/api/auth/config')
+        .then((res) => res.json())
+        .then((cfg) => {
+          if (cfg?.google_client_id) {
+            setGoogleClientId(cfg.google_client_id);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [googleClientId]);
+
+  const handleLoginSuccess = (userData, token) => {
+    setUser(userData);
+    saveClinicianUser(userData, token);
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+    clearClinicianUser();
+  };
 
   const handleToggleTheme = () => {
     setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
@@ -373,7 +409,7 @@ export default function App() {
     });
   }, [charts]);
 
-  return (
+  const appContent = (
     <div className="app">
       <Topbar
         page={page}
@@ -381,6 +417,9 @@ export default function App() {
         hasResult={Boolean(result)}
         theme={theme}
         onToggleTheme={handleToggleTheme}
+        user={user}
+        onOpenAuth={() => setAuthModalOpen(true)}
+        onLogout={handleLogout}
       />
 
       <ErrorBoundary onReset={() => goTo('home')}>
@@ -444,6 +483,23 @@ export default function App() {
           )}
         </main>
       </ErrorBoundary>
+
+      <AuthModal
+        isOpen={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+        onLoginSuccess={handleLoginSuccess}
+        googleClientId={googleClientId}
+      />
     </div>
   );
+
+  if (googleClientId) {
+    return (
+      <GoogleOAuthProvider clientId={googleClientId}>
+        {appContent}
+      </GoogleOAuthProvider>
+    );
+  }
+
+  return appContent;
 }
