@@ -15,14 +15,55 @@ def utc_now():
     return datetime.now(timezone.utc)
 
 
+class ClinicianModel(Base):
+    __tablename__ = "clinicians"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    google_id = Column(String(128), unique=True, index=True, nullable=True)
+    email = Column(String(255), unique=True, index=True, nullable=False)
+    name = Column(String(255), nullable=False)
+    avatar_url = Column(String(512), nullable=True)
+    role = Column(String(64), default="Cardiologist / Clinician")
+    created_at = Column(DateTime(timezone=True), default=utc_now)
+    last_login_at = Column(DateTime(timezone=True), default=utc_now)
+
+    # One clinician owns many patients
+    patients = relationship(
+        "PatientModel",
+        back_populates="clinician",
+        cascade="all, delete-orphan",
+        order_by="PatientModel.updated_at.desc()"
+    )
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "email": self.email,
+            "name": self.name,
+            "avatarUrl": self.avatar_url,
+            "role": self.role,
+            "createdAt": self.created_at.isoformat() if self.created_at else None,
+            "lastLoginAt": self.last_login_at.isoformat() if self.last_login_at else None
+        }
+
+
 class PatientModel(Base):
     __tablename__ = "patients"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    patient_id = Column(String(64), unique=True, index=True, nullable=False)
+    patient_id = Column(String(64), index=True, nullable=False)
     name = Column(String(255), nullable=False)
+    clinician_id = Column(
+        Integer,
+        ForeignKey("clinicians.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
     created_at = Column(DateTime(timezone=True), default=utc_now)
     updated_at = Column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
+
+    # Relationships
+    clinician = relationship("ClinicianModel", back_populates="patients")
 
     # One patient has many clinical encounters
     encounters = relationship(
@@ -133,28 +174,3 @@ class PredictionModel(Base):
             "risk_tier": self.risk_tier,
             "model_name": self.model_name
         }
-
-
-class ClinicianModel(Base):
-    __tablename__ = "clinicians"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    google_id = Column(String(128), unique=True, index=True, nullable=True)
-    email = Column(String(255), unique=True, index=True, nullable=False)
-    name = Column(String(255), nullable=False)
-    avatar_url = Column(String(512), nullable=True)
-    role = Column(String(64), default="Cardiologist / Clinician")
-    created_at = Column(DateTime(timezone=True), default=utc_now)
-    last_login_at = Column(DateTime(timezone=True), default=utc_now)
-
-    def to_dict(self):
-        return {
-            "id": self.id,
-            "email": self.email,
-            "name": self.name,
-            "avatarUrl": self.avatar_url,
-            "role": self.role,
-            "createdAt": self.created_at.isoformat() if self.created_at else None,
-            "lastLoginAt": self.last_login_at.isoformat() if self.last_login_at else None
-        }
-

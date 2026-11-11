@@ -8,13 +8,78 @@ def normalize_patient_id(val: str) -> str:
     return str(val or "").strip().upper()
 
 
-def get_or_create_patient(db: Session, patient_id: str, name: Optional[str] = None) -> PatientModel:
+# ==============================================================================
+# Clinician helpers
+# ==============================================================================
+
+def get_or_create_clinician(
+    db: Session,
+    email: str,
+    name: str,
+    google_id: Optional[str] = None,
+    avatar_url: Optional[str] = None,
+    role: str = "Cardiologist / Clinician"
+) -> ClinicianModel:
+    """Finds or registers a clinician based on verified Google account details."""
+    clean_email = email.strip().lower()
+    clinician = db.query(ClinicianModel).filter(ClinicianModel.email == clean_email).first()
+
+    if not clinician and google_id:
+        clinician = db.query(ClinicianModel).filter(ClinicianModel.google_id == google_id).first()
+
+    if not clinician:
+        clinician = ClinicianModel(
+            email=clean_email,
+            name=name.strip(),
+            google_id=google_id,
+            avatar_url=avatar_url,
+            role=role,
+            last_login_at=utc_now()
+        )
+        db.add(clinician)
+        db.commit()
+        db.refresh(clinician)
+    else:
+        # Update name, avatar, or last login timestamp
+        if name and clinician.name != name.strip():
+            clinician.name = name.strip()
+        if avatar_url and clinician.avatar_url != avatar_url:
+            clinician.avatar_url = avatar_url
+        if google_id and not clinician.google_id:
+            clinician.google_id = google_id
+        clinician.last_login_at = utc_now()
+        db.commit()
+        db.refresh(clinician)
+
+    return clinician
+
+
+def get_clinician_by_email(db: Session, email: str) -> Optional[ClinicianModel]:
+    return db.query(ClinicianModel).filter(ClinicianModel.email == email.strip().lower()).first()
+
+
+# ==============================================================================
+# Patient helpers — all scoped to a clinician
+# ==============================================================================
+
+def get_or_create_patient(
+    db: Session,
+    patient_id: str,
+    clinician_id: int,
+    name: Optional[str] = None
+) -> PatientModel:
+    """Get or create a patient scoped to a specific clinician."""
     norm_id = normalize_patient_id(patient_id)
-    patient = db.query(PatientModel).filter(PatientModel.patient_id == norm_id).first()
+    patient = (
+        db.query(PatientModel)
+        .filter(PatientModel.patient_id == norm_id, PatientModel.clinician_id == clinician_id)
+        .first()
+    )
     if not patient:
         patient = PatientModel(
             patient_id=norm_id,
-            name=(name or "Patient").strip()
+            name=(name or "Patient").strip(),
+            clinician_id=clinician_id
         )
         db.add(patient)
         db.commit()
@@ -83,9 +148,9 @@ def create_encounter_with_prediction(
     return encounter
 
 
-def get_all_patients_charts(db: Session) -> Dict[str, Dict[str, Any]]:
+def get_all_patients_charts(db: Session, clinician_id: int) -> Dict[str, Dict[str, Any]]:
     """
-    Returns all patient charts formatted as the frontend JSON schema:
+    Returns all patient charts for a specific clinician, formatted as:
     {
        "PT-8801": {
           "name": "Robert Vance",
@@ -93,7 +158,12 @@ def get_all_patients_charts(db: Session) -> Dict[str, Dict[str, Any]]:
        }
     }
     """
-    patients = db.query(PatientModel).order_by(PatientModel.updated_at.desc()).all()
+    patients = (
+        db.query(PatientModel)
+        .filter(PatientModel.clinician_id == clinician_id)
+        .order_by(PatientModel.updated_at.desc())
+        .all()
+    )
     result = {}
     for p in patients:
         result[p.patient_id] = {
@@ -103,9 +173,14 @@ def get_all_patients_charts(db: Session) -> Dict[str, Dict[str, Any]]:
     return result
 
 
-def get_patient_roster(db: Session) -> List[Dict[str, Any]]:
-    """Returns roster list for the dashboard."""
-    patients = db.query(PatientModel).order_by(PatientModel.updated_at.desc()).all()
+def get_patient_roster(db: Session, clinician_id: int) -> List[Dict[str, Any]]:
+    """Returns roster list for the dashboard, scoped to a clinician."""
+    patients = (
+        db.query(PatientModel)
+        .filter(PatientModel.clinician_id == clinician_id)
+        .order_by(PatientModel.updated_at.desc())
+        .all()
+    )
     roster = []
     for p in patients:
         latest_visit = p.encounters[-1].to_dict() if p.encounters else None
@@ -118,14 +193,22 @@ def get_patient_roster(db: Session) -> List[Dict[str, Any]]:
     return roster
 
 
-def get_patient_by_id(db: Session, patient_id: str) -> Optional[PatientModel]:
+def get_patient_by_id(db: Session, patient_id: str, clinician_id: int) -> Optional[PatientModel]:
     norm_id = normalize_patient_id(patient_id)
-    return db.query(PatientModel).filter(PatientModel.patient_id == norm_id).first()
+    return (
+        db.query(PatientModel)
+        .filter(PatientModel.patient_id == norm_id, PatientModel.clinician_id == clinician_id)
+        .first()
+    )
 
 
-def delete_patient(db: Session, patient_id: str) -> bool:
+def delete_patient(db: Session, patient_id: str, clinician_id: int) -> bool:
     norm_id = normalize_patient_id(patient_id)
-    patient = db.query(PatientModel).filter(PatientModel.patient_id == norm_id).first()
+    patient = (
+        db.query(PatientModel)
+        .filter(PatientModel.patient_id == norm_id, PatientModel.clinician_id == clinician_id)
+        .first()
+    )
     if not patient:
         return False
     db.delete(patient)
@@ -133,9 +216,9 @@ def delete_patient(db: Session, patient_id: str) -> bool:
     return True
 
 
-def import_bulk_charts(db: Session, charts: Dict[str, Any]) -> Tuple[int, int]:
+def import_bulk_charts(db: Session, charts: Dict[str, Any], clinician_id: int) -> Tuple[int, int]:
     """
-    Upserts patient charts from JSON backup into SQL database.
+    Upserts patient charts from JSON backup into SQL database, scoped to a clinician.
     Returns (imported_patients_count, imported_visits_count).
     """
     imported_patients = 0
@@ -149,7 +232,7 @@ def import_bulk_charts(db: Session, charts: Dict[str, Any]) -> Tuple[int, int]:
             continue
 
         name = record.get("name") or "Patient"
-        patient = get_or_create_patient(db, patient_id=patient_id, name=name)
+        patient = get_or_create_patient(db, patient_id=patient_id, clinician_id=clinician_id, name=name)
         imported_patients += 1
 
         visits = record.get("visits") or []
@@ -198,54 +281,3 @@ def import_bulk_charts(db: Session, charts: Dict[str, Any]) -> Tuple[int, int]:
             imported_visits += 1
 
     return imported_patients, imported_visits
-
-
-def get_or_create_clinician(
-    db: Session,
-    email: str,
-    name: str,
-    google_id: Optional[str] = None,
-    avatar_url: Optional[str] = None,
-    role: str = "Cardiologist / Clinician"
-) -> ClinicianModel:
-    """Finds or registers a clinician based on verified Google account details."""
-    clean_email = email.strip().lower()
-    clinician = db.query(ClinicianModel).filter(ClinicianModel.email == clean_email).first()
-
-    if not clinician and google_id:
-        clinician = db.query(ClinicianModel).filter(ClinicianModel.google_id == google_id).first()
-
-    if not clinician:
-        clinician = ClinicianModel(
-            email=clean_email,
-            name=name.strip(),
-            google_id=google_id,
-            avatar_url=avatar_url,
-            role=role,
-            last_login_at=utc_now()
-        )
-        db.add(clinician)
-        db.commit()
-        db.refresh(clinician)
-    else:
-        # Update name, avatar, or last login timestamp
-        updated = False
-        if name and clinician.name != name.strip():
-            clinician.name = name.strip()
-            updated = True
-        if avatar_url and clinician.avatar_url != avatar_url:
-            clinician.avatar_url = avatar_url
-            updated = True
-        if google_id and not clinician.google_id:
-            clinician.google_id = google_id
-            updated = True
-        clinician.last_login_at = utc_now()
-        db.commit()
-        db.refresh(clinician)
-
-    return clinician
-
-
-def get_clinician_by_email(db: Session, email: str) -> Optional[ClinicianModel]:
-    return db.query(ClinicianModel).filter(ClinicianModel.email == email.strip().lower()).first()
-

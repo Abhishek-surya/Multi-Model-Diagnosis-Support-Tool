@@ -120,10 +120,10 @@ export function HomePage({
   );
 }
 
-function HeartIllustration({ compact = false }) {
+function HeartIllustration() {
   return (
     <svg
-      className={`heart-art ${compact ? 'compact' : ''}`}
+      className="heart-art"
       viewBox="0 0 220 200"
       role="img"
       aria-label="Heart illustration"

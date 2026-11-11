@@ -7,7 +7,7 @@ import { HistoryPage } from './components/HistoryPage';
 import { HealthOverviewPage } from './components/HealthOverviewPage';
 import { TipsPage } from './components/TipsPage';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { AuthModal } from './components/AuthModal';
+import { SignInPage } from './components/SignInPage';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 
 import {
@@ -32,14 +32,14 @@ import {
 } from './utils/authStorage';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? '';
-const INITIAL_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? '';
+const INITIAL_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '185676187697-dfm3u0g7qbcvlhk80a3t3f7v5tcaesb5.apps.googleusercontent.com';
 
 export default function App() {
   const [theme, setTheme] = useState(() => loadTheme());
-  const [user, setUser] = useState(() => loadClinicianUser());
-  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const initialUser = loadClinicianUser();
+  const [user, setUser] = useState(initialUser);
   const [googleClientId, setGoogleClientId] = useState(INITIAL_CLIENT_ID);
-  const [page, setPage] = useState('home');
+  const [page, setPage] = useState(initialUser ? 'home' : 'signin');
   const [formData, setFormData] = useState(emptyForm);
   const [fieldErrors, setFieldErrors] = useState({});
   const [loading, setLoading] = useState(false);
@@ -54,21 +54,25 @@ export default function App() {
     saveTheme(theme);
   }, [theme]);
 
-  // On initial mount, hydrate and merge records from SQL database
+  // On initial mount (after login), hydrate charts from SQL database scoped to this clinician
   useEffect(() => {
+    if (!user?.email) return;
     let isMounted = true;
     const fetchDbCharts = async () => {
       try {
-        const primaryUrl = API_BASE_URL ? `${API_BASE_URL}/api/patients/charts` : '/api/patients/charts';
+        const emailParam = encodeURIComponent(user.email);
+        const primaryUrl = API_BASE_URL
+          ? `${API_BASE_URL}/api/patients/charts?clinician_email=${emailParam}`
+          : `/api/patients/charts?clinician_email=${emailParam}`;
         let res;
         try {
           res = await fetch(primaryUrl);
           if (!res.ok && !API_BASE_URL) {
-            res = await fetch('http://127.0.0.1:8000/api/patients/charts');
+            res = await fetch(`http://127.0.0.1:8000/api/patients/charts?clinician_email=${emailParam}`);
           }
         } catch {
           if (!API_BASE_URL) {
-            res = await fetch('http://127.0.0.1:8000/api/patients/charts');
+            res = await fetch(`http://127.0.0.1:8000/api/patients/charts?clinician_email=${emailParam}`);
           }
         }
         if (res && res.ok) {
@@ -89,30 +93,26 @@ export default function App() {
     return () => {
       isMounted = false;
     };
-  }, []);
-
-  // Fetch Google OAuth Client ID config from backend if not set in frontend env
-  useEffect(() => {
-    if (!googleClientId) {
-      fetch('/api/auth/config')
-        .then((res) => res.json())
-        .then((cfg) => {
-          if (cfg?.google_client_id) {
-            setGoogleClientId(cfg.google_client_id);
-          }
-        })
-        .catch(() => {});
-    }
-  }, [googleClientId]);
+  }, [user?.email]);
 
   const handleLoginSuccess = (userData, token) => {
     setUser(userData);
     saveClinicianUser(userData, token);
+    // Reset charts to empty — will refetch from DB scoped to new clinician
+    setCharts({});
+    saveCharts({});
+    setPage('home');
   };
 
   const handleLogout = () => {
     setUser(null);
     clearClinicianUser();
+    // Clear local charts so next clinician sees only their own data
+    setCharts({});
+    saveCharts({});
+    setResult(null);
+    setFormData(emptyForm);
+    setPage('signin');
   };
 
   const handleToggleTheme = () => {
@@ -120,7 +120,11 @@ export default function App() {
   };
 
   const goTo = (nextPage) => {
-    setPage(nextPage);
+    if (!user && nextPage !== 'signin') {
+      setPage('signin');
+    } else {
+      setPage(nextPage);
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -225,7 +229,8 @@ export default function App() {
 
     try {
       let response;
-      const primaryUrl = API_BASE_URL ? `${API_BASE_URL}/predict` : '/predict';
+      const emailParam = user?.email ? `?clinician_email=${encodeURIComponent(user.email)}` : '';
+      const primaryUrl = API_BASE_URL ? `${API_BASE_URL}/predict${emailParam}` : `/predict${emailParam}`;
 
       try {
         response = await fetch(primaryUrl, {
@@ -238,7 +243,7 @@ export default function App() {
 
         // If relative proxy failed with 500/502/504 and API_BASE_URL wasn't overridden, try direct backend URL
         if (!response.ok && response.status >= 500 && !API_BASE_URL) {
-          response = await fetch('http://127.0.0.1:8000/predict', {
+          response = await fetch(`http://127.0.0.1:8000/predict${emailParam}`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
@@ -249,7 +254,7 @@ export default function App() {
       } catch (networkErr) {
         // If relative fetch failed entirely (e.g. proxy unreachable), try direct backend URL
         if (!API_BASE_URL) {
-          response = await fetch('http://127.0.0.1:8000/predict', {
+          response = await fetch(`http://127.0.0.1:8000/predict${emailParam}`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
@@ -366,9 +371,13 @@ export default function App() {
     setCharts(newCharts);
     saveCharts(newCharts);
 
-    // Sync updates (e.g. deletion, backup restore) to SQL database
+    // Sync updates (e.g. deletion, backup restore) to SQL database, scoped to clinician
+    if (!user?.email) return;
+    const emailParam = `?clinician_email=${encodeURIComponent(user.email)}`;
     try {
-      const syncUrl = API_BASE_URL ? `${API_BASE_URL}/api/patients/sync` : '/api/patients/sync';
+      const syncUrl = API_BASE_URL
+        ? `${API_BASE_URL}/api/patients/sync${emailParam}`
+        : `/api/patients/sync${emailParam}`;
       let res;
       try {
         res = await fetch(syncUrl, {
@@ -377,7 +386,7 @@ export default function App() {
           body: JSON.stringify(newCharts)
         });
         if (!res.ok && !API_BASE_URL) {
-          await fetch('http://127.0.0.1:8000/api/patients/sync', {
+          await fetch(`http://127.0.0.1:8000/api/patients/sync${emailParam}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(newCharts)
@@ -385,7 +394,7 @@ export default function App() {
         }
       } catch {
         if (!API_BASE_URL) {
-          await fetch('http://127.0.0.1:8000/api/patients/sync', {
+          await fetch(`http://127.0.0.1:8000/api/patients/sync${emailParam}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(newCharts)
@@ -409,6 +418,26 @@ export default function App() {
     });
   }, [charts]);
 
+  // ── Sign-in page (no topbar, no dashboard) ──
+  if (page === 'signin' || !user) {
+    const signinContent = (
+      <SignInPage
+        googleClientId={googleClientId}
+        onLoginSuccess={handleLoginSuccess}
+      />
+    );
+
+    if (googleClientId) {
+      return (
+        <GoogleOAuthProvider clientId={googleClientId}>
+          {signinContent}
+        </GoogleOAuthProvider>
+      );
+    }
+    return signinContent;
+  }
+
+  // ── Authenticated app ──
   const appContent = (
     <div className="app">
       <Topbar
@@ -418,7 +447,6 @@ export default function App() {
         theme={theme}
         onToggleTheme={handleToggleTheme}
         user={user}
-        onOpenAuth={() => setAuthModalOpen(true)}
         onLogout={handleLogout}
       />
 
@@ -483,13 +511,6 @@ export default function App() {
           )}
         </main>
       </ErrorBoundary>
-
-      <AuthModal
-        isOpen={authModalOpen}
-        onClose={() => setAuthModalOpen(false)}
-        onLoginSuccess={handleLoginSuccess}
-        googleClientId={googleClientId}
-      />
     </div>
   );
 
