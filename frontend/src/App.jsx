@@ -42,6 +42,43 @@ export default function App() {
     saveTheme(theme);
   }, [theme]);
 
+  // On initial mount, hydrate and merge records from SQL database
+  useEffect(() => {
+    let isMounted = true;
+    const fetchDbCharts = async () => {
+      try {
+        const primaryUrl = API_BASE_URL ? `${API_BASE_URL}/api/patients/charts` : '/api/patients/charts';
+        let res;
+        try {
+          res = await fetch(primaryUrl);
+          if (!res.ok && !API_BASE_URL) {
+            res = await fetch('http://127.0.0.1:8000/api/patients/charts');
+          }
+        } catch {
+          if (!API_BASE_URL) {
+            res = await fetch('http://127.0.0.1:8000/api/patients/charts');
+          }
+        }
+        if (res && res.ok) {
+          const dbCharts = await res.json();
+          if (isMounted && dbCharts && Object.keys(dbCharts).length > 0) {
+            setCharts((local) => {
+              const merged = { ...local, ...dbCharts };
+              saveCharts(merged);
+              return merged;
+            });
+          }
+        }
+      } catch {
+        // Fallback to local storage if backend is unreachable
+      }
+    };
+    fetchDbCharts();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const handleToggleTheme = () => {
     setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
   };
@@ -133,6 +170,8 @@ export default function App() {
     setLoading(true);
 
     const payload = {
+      patient_id: formData.patientId?.trim() || undefined,
+      patient_name: formData.patientName?.trim() || undefined,
       age: parseFloat(formData.age),
       sex: parseFloat(formData.sex),
       cp: parseFloat(formData.cp),
@@ -287,9 +326,39 @@ export default function App() {
     }
   };
 
-  const handleUpdateCharts = (newCharts) => {
+  const handleUpdateCharts = async (newCharts) => {
     setCharts(newCharts);
     saveCharts(newCharts);
+
+    // Sync updates (e.g. deletion, backup restore) to SQL database
+    try {
+      const syncUrl = API_BASE_URL ? `${API_BASE_URL}/api/patients/sync` : '/api/patients/sync';
+      let res;
+      try {
+        res = await fetch(syncUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newCharts)
+        });
+        if (!res.ok && !API_BASE_URL) {
+          await fetch('http://127.0.0.1:8000/api/patients/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newCharts)
+          });
+        }
+      } catch {
+        if (!API_BASE_URL) {
+          await fetch('http://127.0.0.1:8000/api/patients/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newCharts)
+          }).catch(() => {});
+        }
+      }
+    } catch {
+      // Gracefully continue even if offline
+    }
   };
 
   const patientList = useMemo(() => {
