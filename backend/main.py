@@ -2,7 +2,7 @@ import os
 import joblib
 import pandas as pd
 from typing import Dict, Any, List, Optional
-from fastapi import FastAPI, HTTPException, status, Depends
+from fastapi import FastAPI, HTTPException, status, Depends, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
@@ -21,7 +21,9 @@ try:
         get_patient_roster,
         get_patient_by_id,
         delete_patient,
-        import_bulk_charts
+        import_bulk_charts,
+        get_clinician_by_email,
+        get_or_create_clinician
     )
     from backend.auth import router as auth_router
 except ImportError:
@@ -39,7 +41,9 @@ except ImportError:
         get_patient_roster,
         get_patient_by_id,
         delete_patient,
-        import_bulk_charts
+        import_bulk_charts,
+        get_clinician_by_email,
+        get_or_create_clinician
     )
     from auth import router as auth_router
 
@@ -47,7 +51,7 @@ except ImportError:
 app = FastAPI(
     title="Multi-Model Diagnosis Support Tool API",
     description="Backend API for Heart Disease Risk Prediction & Clinical SQL Persistence",
-    version="1.1.0"
+    version="1.2.0"
 )
 
 # 2. Configure CORS for local Vite frontend (and common LAN origins during host:true)
@@ -121,6 +125,26 @@ def on_startup():
         print(f"Warning: Database initialization failed: {e}")
 
 
+# ==============================================================================
+# Helper: resolve clinician from email query param
+# ==============================================================================
+
+def resolve_clinician_id(db: Session, clinician_email: Optional[str]) -> Optional[int]:
+    """Look up clinician by email, return their DB id or None."""
+    if not clinician_email:
+        return None
+    clinician = get_clinician_by_email(db, clinician_email)
+    if clinician:
+        return clinician.id
+    # Auto-create for dev convenience (e.g. first sync before explicit login)
+    clinician = get_or_create_clinician(db, email=clinician_email, name=clinician_email.split("@")[0].title())
+    return clinician.id
+
+
+# ==============================================================================
+# Core endpoints
+# ==============================================================================
+
 @app.get("/")
 def read_root():
     """Simple confirmation endpoint."""
@@ -147,7 +171,8 @@ def health_check():
 @app.post("/predict", response_model=PredictionResponse)
 def predict_heart_disease(
     patient_data: HeartDiseaseInput,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    clinician_email: Optional[str] = Query(None, description="Email of the logged-in clinician")
 ):
     """
     Accepts 13 patient features, validates categorical encodings,
@@ -198,30 +223,33 @@ def predict_heart_disease(
 
         # If patient_id was supplied, automatically persist to SQL database
         if patient_data.patient_id and patient_data.patient_id.strip():
-            try:
-                patient = get_or_create_patient(
-                    db=db,
-                    patient_id=patient_data.patient_id,
-                    name=patient_data.patient_name
-                )
-                biomarkers = {col: float(data_dict[col]) for col in FEATURE_NAMES}
-                enc = create_encounter_with_prediction(
-                    db=db,
-                    patient=patient,
-                    biomarkers=biomarkers,
-                    prediction_result={
-                        "predicted_class": prediction,
-                        "readable_result": readable_result,
-                        "probability": probability,
-                        "probability_percentage": prob_percentage,
-                        "model_name": "Logistic Regression Pipeline"
-                    }
-                )
-                saved_to_db = True
-                encounter_id = enc.id
-            except Exception as db_err:
-                # Log DB error without breaking prediction response
-                print(f"Warning: Failed to persist encounter to SQL DB: {db_err}")
+            clinician_id = resolve_clinician_id(db, clinician_email)
+            if clinician_id:
+                try:
+                    patient = get_or_create_patient(
+                        db=db,
+                        patient_id=patient_data.patient_id,
+                        clinician_id=clinician_id,
+                        name=patient_data.patient_name
+                    )
+                    biomarkers = {col: float(data_dict[col]) for col in FEATURE_NAMES}
+                    enc = create_encounter_with_prediction(
+                        db=db,
+                        patient=patient,
+                        biomarkers=biomarkers,
+                        prediction_result={
+                            "predicted_class": prediction,
+                            "readable_result": readable_result,
+                            "probability": probability,
+                            "probability_percentage": prob_percentage,
+                            "model_name": "Logistic Regression Pipeline"
+                        }
+                    )
+                    saved_to_db = True
+                    encounter_id = enc.id
+                except Exception as db_err:
+                    # Log DB error without breaking prediction response
+                    print(f"Warning: Failed to persist encounter to SQL DB: {db_err}")
 
         return PredictionResponse(
             predicted_class=prediction,
@@ -242,32 +270,51 @@ def predict_heart_disease(
 
 
 # ==============================================================================
-# Clinical SQL Database REST Endpoints
+# Clinical SQL Database REST Endpoints — all scoped to logged-in clinician
 # ==============================================================================
 
 @app.get("/api/patients", response_model=List[PatientSummaryResponse])
-def list_patients(db: Session = Depends(get_db)):
-    """Fetch patient roster with latest visit summary from SQL database."""
-    return get_patient_roster(db)
+def list_patients(
+    db: Session = Depends(get_db),
+    clinician_email: Optional[str] = Query(None)
+):
+    """Fetch patient roster with latest visit summary, scoped to clinician."""
+    clinician_id = resolve_clinician_id(db, clinician_email)
+    if not clinician_id:
+        return []
+    return get_patient_roster(db, clinician_id)
 
 
 @app.get("/api/patients/charts")
-def get_all_charts(db: Session = Depends(get_db)) -> Dict[str, Any]:
+def get_all_charts(
+    db: Session = Depends(get_db),
+    clinician_email: Optional[str] = Query(None)
+) -> Dict[str, Any]:
     """
-    Fetch all patient charts formatted for frontend state hydration.
+    Fetch all patient charts for a clinician, formatted for frontend state hydration.
     Matches the schema: { [patientId]: { name, visits: [...] } }
     """
-    return get_all_patients_charts(db)
+    clinician_id = resolve_clinician_id(db, clinician_email)
+    if not clinician_id:
+        return {}
+    return get_all_patients_charts(db, clinician_id)
 
 
 @app.get("/api/patients/{patient_id}")
-def get_single_patient_chart(patient_id: str, db: Session = Depends(get_db)):
+def get_single_patient_chart(
+    patient_id: str,
+    db: Session = Depends(get_db),
+    clinician_email: Optional[str] = Query(None)
+):
     """Fetch full longitudinal encounter history for a specific patient."""
-    patient = get_patient_by_id(db, patient_id)
+    clinician_id = resolve_clinician_id(db, clinician_email)
+    if not clinician_id:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Clinician not identified.")
+    patient = get_patient_by_id(db, patient_id, clinician_id)
     if not patient:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Patient '{patient_id}' not found in database."
+            detail=f"Patient '{patient_id}' not found in your records."
         )
     return {
         "patientId": patient.patient_id,
@@ -277,13 +324,20 @@ def get_single_patient_chart(patient_id: str, db: Session = Depends(get_db)):
 
 
 @app.delete("/api/patients/{patient_id}")
-def remove_patient(patient_id: str, db: Session = Depends(get_db)):
+def remove_patient(
+    patient_id: str,
+    db: Session = Depends(get_db),
+    clinician_email: Optional[str] = Query(None)
+):
     """Delete patient and cascade delete all encounters and predictions from SQL database."""
-    success = delete_patient(db, patient_id)
+    clinician_id = resolve_clinician_id(db, clinician_email)
+    if not clinician_id:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Clinician not identified.")
+    success = delete_patient(db, patient_id, clinician_id)
     if not success:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Patient '{patient_id}' not found in database."
+            detail=f"Patient '{patient_id}' not found in your records."
         )
     return {"message": f"Patient '{patient_id}' and all associated encounters deleted successfully."}
 
@@ -291,13 +345,21 @@ def remove_patient(patient_id: str, db: Session = Depends(get_db)):
 @app.post("/api/patients/sync", response_model=BulkSyncResponse)
 def sync_patients_from_backup(
     payload: Dict[str, Any],
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    clinician_email: Optional[str] = Query(None)
 ):
     """
-    Bulk import/synchronize JSON patient charts into SQL database.
-    Accepts the JSON backup dictionary exported by the frontend.
+    Bulk import/synchronize JSON patient charts into SQL database, scoped to clinician.
     """
-    patients_count, visits_count = import_bulk_charts(db, payload)
+    clinician_id = resolve_clinician_id(db, clinician_email)
+    if not clinician_id:
+        return BulkSyncResponse(
+            status="skipped",
+            message="No clinician identified; sync skipped.",
+            imported_patients=0,
+            imported_visits=0
+        )
+    patients_count, visits_count = import_bulk_charts(db, payload, clinician_id)
     return BulkSyncResponse(
         status="success",
         message=f"Successfully synchronized {patients_count} patient(s) and {visits_count} encounter(s) into SQL database.",
@@ -307,6 +369,12 @@ def sync_patients_from_backup(
 
 
 @app.get("/api/patients/export/json")
-def export_database_as_json(db: Session = Depends(get_db)):
-    """Export complete SQL database as downloadable JSON backup format."""
-    return get_all_patients_charts(db)
+def export_database_as_json(
+    db: Session = Depends(get_db),
+    clinician_email: Optional[str] = Query(None)
+):
+    """Export complete SQL database as downloadable JSON backup format, scoped to clinician."""
+    clinician_id = resolve_clinician_id(db, clinician_email)
+    if not clinician_id:
+        return {}
+    return get_all_patients_charts(db, clinician_id)

@@ -16,8 +16,34 @@ except ImportError:
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
-# Read Google Client ID from environment variable
-GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "").strip()
+# Default configured Google OAuth Client ID
+DEFAULT_GOOGLE_CLIENT_ID = "185676187697-dfm3u0g7qbcvlhk80a3t3f7v5tcaesb5.apps.googleusercontent.com"
+
+
+def _load_env_if_present():
+    """Lightweight .env loader without external dependencies."""
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    env_path = os.path.join(base_dir, ".env")
+    if os.path.exists(env_path):
+        try:
+            with open(env_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith("#") and "=" in line:
+                        k, v = line.split("=", 1)
+                        k = k.strip()
+                        v = v.strip().strip('"').strip("'")
+                        if k not in os.environ:
+                            os.environ[k] = v
+        except Exception:
+            pass
+
+
+_load_env_if_present()
+
+
+def get_google_client_id() -> str:
+    return os.getenv("GOOGLE_CLIENT_ID", "").strip() or DEFAULT_GOOGLE_CLIENT_ID
 
 
 class GoogleLoginRequest(BaseModel):
@@ -33,7 +59,7 @@ class DevLoginRequest(BaseModel):
 @router.get("/config")
 def get_auth_config():
     """Returns the Google Client ID configured on the server."""
-    client_id = os.getenv("GOOGLE_CLIENT_ID", "").strip()
+    client_id = get_google_client_id()
     return {
         "google_client_id": client_id,
         "is_configured": bool(client_id)
@@ -56,7 +82,8 @@ def authenticate_with_google(
             detail="Google ID token credential must not be empty."
         )
 
-    expected_client_id = os.getenv("GOOGLE_CLIENT_ID", "").strip() or (payload.client_id or "").strip() or None
+    expected_client_id = get_google_client_id() or (payload.client_id or "").strip() or None
+
 
     try:
         # Cryptographically verify the Google token signature and audience
