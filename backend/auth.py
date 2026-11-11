@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from google.oauth2 import id_token
 from google.auth.transport import requests
-from google.auth.exceptions import GoogleAuthError, TransportError
+from google.auth.exceptions import GoogleAuthError
 
 try:
     from backend.database import get_db
@@ -83,7 +83,6 @@ def authenticate_with_google(
         )
 
     expected_client_id = get_google_client_id() or (payload.client_id or "").strip() or None
-
 
     try:
         # Cryptographically verify the Google token signature and audience

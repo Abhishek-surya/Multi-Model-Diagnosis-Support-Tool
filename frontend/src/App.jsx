@@ -36,9 +36,10 @@ const INITIAL_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '185676187697
 
 export default function App() {
   const [theme, setTheme] = useState(() => loadTheme());
-  const [user, setUser] = useState(() => loadClinicianUser());
+  const initialUser = loadClinicianUser();
+  const [user, setUser] = useState(initialUser);
   const [googleClientId, setGoogleClientId] = useState(INITIAL_CLIENT_ID);
-  const [page, setPage] = useState(() => loadClinicianUser() ? 'home' : 'signin');
+  const [page, setPage] = useState(initialUser ? 'home' : 'signin');
   const [formData, setFormData] = useState(emptyForm);
   const [fieldErrors, setFieldErrors] = useState({});
   const [loading, setLoading] = useState(false);
@@ -93,20 +94,6 @@ export default function App() {
       isMounted = false;
     };
   }, [user?.email]);
-
-  // Fetch Google OAuth Client ID config from backend if not set in frontend env
-  useEffect(() => {
-    if (!googleClientId) {
-      fetch('/api/auth/config')
-        .then((res) => res.json())
-        .then((cfg) => {
-          if (cfg?.google_client_id) {
-            setGoogleClientId(cfg.google_client_id);
-          }
-        })
-        .catch(() => {});
-    }
-  }, [googleClientId]);
 
   const handleLoginSuccess = (userData, token) => {
     setUser(userData);

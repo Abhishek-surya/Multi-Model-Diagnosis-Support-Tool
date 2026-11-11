@@ -110,12 +110,6 @@ VALID_CATEGORIES = {
 }
 
 
-try:
-    init_db()
-except Exception as e:
-    print(f"Warning: Initial database setup notice: {e}")
-
-
 @app.on_event("startup")
 def on_startup():
     """Ensure database tables exist on service startup."""
