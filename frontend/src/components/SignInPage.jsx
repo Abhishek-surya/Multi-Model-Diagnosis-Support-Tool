@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { GoogleLogin } from '@react-oauth/google';
 
 /**
@@ -8,6 +8,20 @@ import { GoogleLogin } from '@react-oauth/google';
 export function SignInPage({ googleClientId, onLoginSuccess }) {
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(false);
+  const [btnWidth, setBtnWidth] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return Math.max(240, Math.min(320, window.innerWidth - 64));
+    }
+    return 300;
+  });
+
+  useEffect(() => {
+    const handleResize = () => {
+      setBtnWidth(Math.max(240, Math.min(320, window.innerWidth - 64)));
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const handleGoogleSuccess = async (credentialResponse) => {
     setErrorMsg('');
@@ -117,7 +131,7 @@ export function SignInPage({ googleClientId, onLoginSuccess }) {
                 shape="rectangular"
                 size="large"
                 text="signin_with"
-                width="320"
+                width={String(btnWidth)}
               />
             </div>
           ) : (
