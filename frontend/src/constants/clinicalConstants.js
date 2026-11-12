@@ -150,9 +150,12 @@ export const HEART_TIPS = [
 ];
 
 export const REFERENCE_RANGES = [
+  // --- 1. Cardiovascular Vitals & Metabolic ---
   {
     id: 'bp',
-    label: 'Resting blood pressure',
+    category: 'vitals',
+    categoryLabel: 'Vitals & Metabolic',
+    label: 'Resting Blood Pressure',
     unit: 'mm Hg',
     healthy: '90–120',
     caution: '121–139',
@@ -161,47 +164,231 @@ export const REFERENCE_RANGES = [
     max: 200,
     healthyMin: 90,
     healthyMax: 120,
-    formKey: 'trestbps'
+    formKey: 'trestbps',
+    clinicalSignificance: 'Systolic BP under 120 mm Hg prevents barotrauma, arterial stiffening, and subendocardial shear stress.'
   },
   {
     id: 'chol',
-    label: 'Total cholesterol',
+    category: 'vitals',
+    categoryLabel: 'Vitals & Metabolic',
+    label: 'Total Serum Cholesterol',
     unit: 'mg/dL',
-    healthy: 'Under 200',
+    healthy: '< 200',
     caution: '200–239',
     high: '240+',
     min: 80,
     max: 400,
     healthyMin: 80,
     healthyMax: 199,
-    formKey: 'chol'
+    formKey: 'chol',
+    clinicalSignificance: 'Circulating cholesterol < 200 mg/dL prevents ApoB lipid core deposition and coronary plaque formation.'
   },
   {
     id: 'hr',
-    label: 'Peak heart rate',
+    category: 'vitals',
+    categoryLabel: 'Vitals & Metabolic',
+    label: 'Peak Exercise Heart Rate',
     unit: 'bpm',
-    healthy: 'Age-adjusted target',
-    caution: 'Below expected',
-    high: 'Above expected',
-    min: 50,
+    healthy: '>= 150 bpm',
+    caution: '120–149 bpm',
+    high: '< 120 bpm',
+    min: 60,
     max: 220,
-    healthyMin: 100,
-    healthyMax: 170,
-    formKey: 'thalach'
+    healthyMin: 140,
+    healthyMax: 205,
+    invertScale: true,
+    formKey: 'thalach',
+    clinicalSignificance: 'Ability to achieve target heart rate demonstrates chronotropic competence and coronary perfusion reserve.'
   },
   {
     id: 'sugar',
-    label: 'Fasting blood sugar',
-    unit: '',
-    healthy: '120 mg/dL or lower',
-    caution: 'Above 120 mg/dL',
-    high: 'Needs follow-up',
+    category: 'vitals',
+    categoryLabel: 'Vitals & Metabolic',
+    label: 'Fasting Blood Sugar',
+    unit: 'mg/dL',
+    healthy: '<= 120 mg/dL',
+    caution: '100–120 mg/dL',
+    high: '> 120 mg/dL',
     min: 0,
     max: 1,
     healthyMin: 0,
     healthyMax: 0,
     formKey: 'fbs',
-    categorical: true
+    categorical: true,
+    options: [
+      { value: '0.0', label: '<= 120 mg/dL (Normal)', status: 'healthy' },
+      { value: '1.0', label: '> 120 mg/dL (Hyperglycemia)', status: 'high' }
+    ],
+    clinicalSignificance: 'Euglycemia protects the vascular glycocalyx and suppresses advanced glycation end-product microangiopathy.'
+  },
+  {
+    id: 'age',
+    category: 'vitals',
+    categoryLabel: 'Vitals & Metabolic',
+    label: 'Patient Chronological Age',
+    unit: 'years',
+    healthy: '< 45 years',
+    caution: '45–64 years',
+    high: '65+ years',
+    min: 20,
+    max: 90,
+    healthyMin: 20,
+    healthyMax: 44,
+    formKey: 'age',
+    clinicalSignificance: 'Chronological age reflects lifetime cumulative hemodynamic wear, vascular senescence, and intimal remodeling.'
+  },
+
+  // --- 2. Electrocardiography & Stress Testing ---
+  {
+    id: 'oldpeak',
+    category: 'ecg',
+    categoryLabel: 'ECG & Stress Response',
+    label: 'ST Depression (Exercise Ischemia)',
+    unit: 'mm',
+    healthy: '< 1.0 mm',
+    caution: '1.0–1.9 mm',
+    high: '>= 2.0 mm',
+    min: 0.0,
+    max: 5.0,
+    healthyMin: 0.0,
+    healthyMax: 0.9,
+    formKey: 'oldpeak',
+    clinicalSignificance: 'Exertional ST-segment depression provides direct electrocardiographic evidence of subendocardial ischemia.'
+  },
+  {
+    id: 'slope',
+    category: 'ecg',
+    categoryLabel: 'ECG & Stress Response',
+    label: 'Peak Exercise ST Slope',
+    unit: 'trajectory',
+    healthy: 'Type 1: Upsloping',
+    caution: 'Type 2: Flat',
+    high: 'Type 3: Downsloping',
+    min: 1,
+    max: 3,
+    healthyMin: 1,
+    healthyMax: 1,
+    formKey: 'slope',
+    categorical: true,
+    options: [
+      { value: '1.0', label: '1: Upsloping (Physiologic)', status: 'healthy' },
+      { value: '2.0', label: '2: Flat (Equivocal repolarization)', status: 'caution' },
+      { value: '3.0', label: '3: Downsloping (Severe ischemia)', status: 'high' }
+    ],
+    clinicalSignificance: 'An upsloping ST segment is normal under stress. Flat or downsloping ST signifies delayed myocardial repolarization.'
+  },
+  {
+    id: 'restecg',
+    category: 'ecg',
+    categoryLabel: 'ECG & Stress Response',
+    label: 'Resting Electrocardiogram',
+    unit: 'rhythm',
+    healthy: '0: Normal',
+    caution: '1: ST-T Wave Abnormality',
+    high: '2: Left Ventricular Hypertrophy',
+    min: 0,
+    max: 2,
+    healthyMin: 0,
+    healthyMax: 0,
+    formKey: 'restecg',
+    categorical: true,
+    options: [
+      { value: '0.0', label: '0: Normal baseline ECG', status: 'healthy' },
+      { value: '1.0', label: '1: ST-T wave inversion/depression', status: 'caution' },
+      { value: '2.0', label: '2: LVH by Estes criteria', status: 'high' }
+    ],
+    clinicalSignificance: 'Resting ST-T wave changes or LVH reveal chronic hypertensive pressure overload and baseline repolarization strain.'
+  },
+  {
+    id: 'exang',
+    category: 'ecg',
+    categoryLabel: 'ECG & Stress Response',
+    label: 'Exercise-Induced Angina',
+    unit: 'symptom',
+    healthy: 'No (Absent)',
+    caution: 'Equivocal chest tightness',
+    high: 'Yes (Exertional angina)',
+    min: 0,
+    max: 1,
+    healthyMin: 0,
+    healthyMax: 0,
+    formKey: 'exang',
+    categorical: true,
+    options: [
+      { value: '0.0', label: 'No: Absent during stress', status: 'healthy' },
+      { value: '1.0', label: 'Yes: Triggered by exertion', status: 'high' }
+    ],
+    clinicalSignificance: 'Angina provoked by exertion indicates myocardial oxygen demand exceeding stenotic coronary blood supply.'
+  },
+
+  // --- 3. Cardiac Anatomy, Imaging & Demographics ---
+  {
+    id: 'ca',
+    category: 'imaging',
+    categoryLabel: 'Anatomy & Imaging',
+    label: 'Fluoroscopy Colored Vessels (ca)',
+    unit: 'vessels',
+    healthy: '0 vessels (Patent)',
+    caution: '1 vessel calcified',
+    high: '2–3 vessels (Multivessel)',
+    min: 0,
+    max: 3,
+    healthyMin: 0,
+    healthyMax: 0,
+    formKey: 'ca',
+    categorical: true,
+    options: [
+      { value: '0.0', label: '0: Patent (Zero calcified vessels)', status: 'healthy' },
+      { value: '1.0', label: '1: Single vessel calcification', status: 'caution' },
+      { value: '2.0', label: '2: Two vessels calcified', status: 'high' },
+      { value: '3.0', label: '3: Three vessels calcified', status: 'high' }
+    ],
+    clinicalSignificance: 'Direct fluoroscopic visualization of major coronary artery calcification confirms structural atherosclerotic disease.'
+  },
+  {
+    id: 'thal',
+    category: 'imaging',
+    categoryLabel: 'Anatomy & Imaging',
+    label: 'Thallium Myocardial Perfusion',
+    unit: 'scintigraphy',
+    healthy: 'Code 3: Normal perfusion',
+    caution: 'Code 6: Fixed defect (Scar)',
+    high: 'Code 7: Reversible defect (Ischemia)',
+    min: 3,
+    max: 7,
+    healthyMin: 3,
+    healthyMax: 3,
+    formKey: 'thal',
+    categorical: true,
+    options: [
+      { value: '3.0', label: '3: Normal myocardial blood flow', status: 'healthy' },
+      { value: '6.0', label: '6: Fixed defect (Infarct scar)', status: 'caution' },
+      { value: '7.0', label: '7: Reversible defect (Transient ischemia)', status: 'high' }
+    ],
+    clinicalSignificance: 'Nuclear scintigraphy identifies salvageable under-perfused myocardium (reversible) versus scarred tissue (fixed defect).'
+  },
+  {
+    id: 'cp',
+    category: 'imaging',
+    categoryLabel: 'Anatomy & Imaging',
+    label: 'Chest Pain Presentation (cp)',
+    unit: 'category',
+    healthy: 'Class 1 / 2 (Typical / Atypical)',
+    caution: 'Class 3 (Non-anginal)',
+    high: 'Class 4 (Asymptomatic / Silent)',
+    min: 1,
+    max: 4,
+    healthyMin: 1,
+    healthyMax: 2,
+    formKey: 'cp',
+    categorical: true,
+    options: [
+      { value: '1.0', label: '1: Typical Angina', status: 'healthy' },
+      { value: '2.0', label: '2: Atypical Angina', status: 'healthy' },
+      { value: '3.0', label: '3: Non-anginal pain', status: 'caution' },
+      { value: '4.0', label: '4: Asymptomatic (Silent ischemia)', status: 'high' }
+    ],
+    clinicalSignificance: 'In clinical registries, asymptomatic presentations in at-risk patients often disguise occult, severe ischemic disease.'
   }
 ];
 

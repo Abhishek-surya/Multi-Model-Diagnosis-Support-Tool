@@ -9,6 +9,7 @@ import backend.main as backend_module
 from backend.main import app
 from backend.crud import (
     get_or_create_patient,
+    get_or_create_clinician,
     create_encounter_with_prediction,
     get_all_patients_charts,
     get_patient_roster,
@@ -51,6 +52,7 @@ class TestDatabaseAndAPI(unittest.TestCase):
         # Create fresh tables in memory before each test
         Base.metadata.create_all(bind=test_engine)
         self.db = TestingSessionLocal()
+        self.clinician = get_or_create_clinician(self.db, "dr.smith@cardio.org", "Dr. Jane Smith")
 
     def tearDown(self):
         self.db.close()
@@ -58,7 +60,7 @@ class TestDatabaseAndAPI(unittest.TestCase):
 
     def test_01_create_patient_and_encounter(self):
         """Verify Patient and Encounter models can be created and linked."""
-        patient = get_or_create_patient(self.db, "PT-1001", "Alice Heart")
+        patient = get_or_create_patient(self.db, "PT-1001", clinician_id=self.clinician.id, name="Alice Heart")
         self.assertIsNotNone(patient.id)
         self.assertEqual(patient.patient_id, "PT-1001")
         self.assertEqual(patient.name, "Alice Heart")
@@ -101,7 +103,7 @@ class TestDatabaseAndAPI(unittest.TestCase):
             "ca": 3.0,
             "thal": 3.0
         }
-        response = self.client.post("/predict", json=payload)
+        response = self.client.post("/predict?clinician_email=dr.smith@cardio.org", json=payload)
         self.assertEqual(response.status_code, 200)
         data = response.json()
         self.assertTrue(data.get("saved_to_db"))
@@ -117,7 +119,7 @@ class TestDatabaseAndAPI(unittest.TestCase):
     def test_03_get_patients_roster_and_charts_endpoints(self):
         """Test GET /api/patients and GET /api/patients/charts."""
         # Insert a sample patient
-        patient = get_or_create_patient(self.db, "PT-5555", "Bob Davis")
+        patient = get_or_create_patient(self.db, "PT-5555", clinician_id=self.clinician.id, name="Bob Davis")
         biomarkers = {
             "age": 60.0, "sex": 1.0, "cp": 4.0, "trestbps": 140.0,
             "chol": 250.0, "fbs": 1.0, "restecg": 1.0, "thalach": 130.0,
@@ -130,7 +132,7 @@ class TestDatabaseAndAPI(unittest.TestCase):
         })
 
         # Test roster endpoint
-        res = self.client.get("/api/patients")
+        res = self.client.get("/api/patients?clinician_email=dr.smith@cardio.org")
         self.assertEqual(res.status_code, 200)
         roster = res.json()
         self.assertEqual(len(roster), 1)
@@ -138,7 +140,7 @@ class TestDatabaseAndAPI(unittest.TestCase):
         self.assertEqual(roster[0]["visits"], 1)
 
         # Test full charts endpoint
-        res_charts = self.client.get("/api/patients/charts")
+        res_charts = self.client.get("/api/patients/charts?clinician_email=dr.smith@cardio.org")
         self.assertEqual(res_charts.status_code, 200)
         charts = res_charts.json()
         self.assertIn("PT-5555", charts)
@@ -146,7 +148,7 @@ class TestDatabaseAndAPI(unittest.TestCase):
 
     def test_04_delete_patient_cascade(self):
         """Verify deleting a patient cascade deletes all encounters and predictions."""
-        patient = get_or_create_patient(self.db, "PT-DELETE", "To Be Deleted")
+        patient = get_or_create_patient(self.db, "PT-DELETE", clinician_id=self.clinician.id, name="To Be Deleted")
         biomarkers = {
             "age": 50.0, "sex": 1.0, "cp": 1.0, "trestbps": 120.0,
             "chol": 200.0, "fbs": 0.0, "restecg": 0.0, "thalach": 150.0,
@@ -163,7 +165,7 @@ class TestDatabaseAndAPI(unittest.TestCase):
         self.assertEqual(self.db.query(PredictionModel).count(), 1)
 
         # Call DELETE endpoint
-        res = self.client.delete("/api/patients/PT-DELETE")
+        res = self.client.delete("/api/patients/PT-DELETE?clinician_email=dr.smith@cardio.org")
         self.assertEqual(res.status_code, 200)
 
         # Confirm cascade deletion
@@ -194,7 +196,7 @@ class TestDatabaseAndAPI(unittest.TestCase):
                 ]
             }
         }
-        res = self.client.post("/api/patients/sync", json=payload)
+        res = self.client.post("/api/patients/sync?clinician_email=dr.smith@cardio.org", json=payload)
         self.assertEqual(res.status_code, 200)
         data = res.json()
         self.assertEqual(data.get("status"), "success")

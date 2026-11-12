@@ -2550,3 +2550,156 @@ select.error {
   border-radius: 3px;
   font-size: 0.8em;
 }
+
+
+/* ==========================================================================
+   Full 13-Feature Reference Ranges & What-If Simulator Enhancements
+   ========================================================================== */
+
+.ref-category-tabs,
+.sim-category-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.ref-summary-card {
+  margin-bottom: 20px;
+  background: var(--bg-card-alt);
+  border: 1px solid var(--border-color);
+}
+
+.ref-summary-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.ref-summary-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.range-category-tag {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--primary);
+  margin-bottom: 3px;
+}
+
+.range-segmented-track {
+  position: relative;
+  display: flex;
+  height: 14px;
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 14px;
+  gap: 3px;
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.range-segment {
+  flex: 1;
+  height: 100%;
+  border-radius: 4px;
+  opacity: 0.85;
+}
+
+.range-segment.selected {
+  opacity: 1;
+  box-shadow: inset 0 0 0 2px var(--text-heading);
+}
+
+.range-significance {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border-subtle);
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.range-card.card-status-high {
+  border-left: 4px solid var(--hazard);
+}
+
+.range-card.card-status-caution {
+  border-left: 4px solid var(--warn);
+}
+
+.range-card.card-status-healthy {
+  border-left: 4px solid var(--safe);
+}
+
+.anatomy-categories-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-top: 16px;
+}
+
+@media (max-width: 1024px) {
+  .anatomy-categories-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.anatomy-category-block {
+  background: var(--bg-card-alt);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.anatomy-category-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-heading);
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--border-color);
+}
+
+.sim-mod-counter-bar {
+  background: var(--bg-card-alt);
+  border: 1px dashed var(--border-color);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sim-control-group.modified {
+  border-color: #8b5cf6;
+  box-shadow: 0 0 0 1px #8b5cf6;
+}
+
+.sim-toggle-buttons.segmented {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.sim-toggle-buttons.segmented .sim-toggle-btn {
+  flex: 1 1 auto;
+  padding: 6px 10px;
+  font-size: 0.78rem;
+  text-align: center;
+}
+
+.sim-toggle-btn.active.caution {
+  background: var(--warn-bg);
+  border-color: var(--warn-border);
+  color: var(--warn);
+}
