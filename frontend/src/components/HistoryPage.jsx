@@ -1,6 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { TREND_METRICS } from '../constants/clinicalConstants';
-import { exportChartsAsJson, parseImportedJson } from '../utils/storage';
 
 export function HistoryPage({
   charts,
@@ -11,15 +10,12 @@ export function HistoryPage({
   onOpenVisitReport,
   onDeletePatient,
   onClearAllPatients,
-  onImportBackup,
   onUpdateCharts
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [riskFilter, setRiskFilter] = useState('all'); // 'all', 'high', 'low'
   const [sortBy, setSortBy] = useState('recent'); // 'recent', 'name', 'visits'
   const [metricCategory, setMetricCategory] = useState('all'); // 'all', 'vitals', 'ecg', 'imaging', 'demo'
-  const [importError, setImportError] = useState(null);
-  const fileInputRef = useRef(null);
 
   const ids = Object.keys(charts);
 
@@ -106,40 +102,6 @@ export function HistoryPage({
     }
   }, [activeId, selectedId, onSelect]);
 
-  const handleExportBackup = () => {
-    exportChartsAsJson(charts);
-  };
-
-  const handleImportClick = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
-  };
-
-  const handleFileChange = (e) => {
-    setImportError(null);
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const parsed = parseImportedJson(event.target?.result);
-        if (onImportBackup) {
-          onImportBackup(parsed);
-        } else if (onUpdateCharts) {
-          const merged = { ...charts, ...parsed };
-          onUpdateCharts(merged);
-        }
-        alert(`Successfully imported patient records. Total patients: ${Object.keys(parsed).length}`);
-      } catch (err) {
-        setImportError(err.message || 'Failed to parse JSON backup file.');
-      }
-    };
-    reader.readAsText(file);
-    e.target.value = '';
-  };
-
   const handleDeletePatient = (patientId) => {
     const pName = charts[patientId]?.name || patientId;
     if (window.confirm(`Are you sure you want to permanently delete patient "${pName}" (${patientId}) and all their encounter records?`)) {
@@ -175,25 +137,13 @@ export function HistoryPage({
       <section className="card roster-empty-card">
         <h1 className="section-title">Patient Roster &amp; Visit History</h1>
         <p className="section-intro">
-          No patient charts on file yet. Save a screening with a patient ID to initialize a longitudinal record,
-          or import an existing clinical backup.
+          No patient charts on file yet. Save a screening with a patient ID to initialize a longitudinal record.
         </p>
         <div className="empty-roster-actions">
           <button type="button" className="btn-primary" onClick={onScreen}>
             Start First Screening
           </button>
-          <button type="button" className="btn-secondary" onClick={handleImportClick}>
-            Import JSON Backup
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".json"
-            onChange={handleFileChange}
-            style={{ display: 'none' }}
-          />
         </div>
-        {importError && <div className="alert-error mt-4">{importError}</div>}
       </section>
     );
   }
@@ -207,23 +157,7 @@ export function HistoryPage({
             <span className="eyebrow">Patient Management</span>
             <h1 className="section-title">Clinical Roster &amp; Longitudinal History</h1>
           </div>
-          <div className="roster-backup-actions">
-            <button
-              type="button"
-              className="btn-chip"
-              onClick={handleExportBackup}
-              title="Download full JSON backup of all patient records"
-            >
-              Export JSON Backup
-            </button>
-            <button
-              type="button"
-              className="btn-chip"
-              onClick={handleImportClick}
-              title="Import or restore patient charts from JSON backup"
-            >
-              Import Backup
-            </button>
+          <div className="roster-header-actions">
             <button
               type="button"
               className="btn-chip delete-btn"
@@ -232,17 +166,8 @@ export function HistoryPage({
             >
               Clear All Patients
             </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".json"
-              onChange={handleFileChange}
-              style={{ display: 'none' }}
-            />
           </div>
         </div>
-
-        {importError && <div className="alert-error">{importError}</div>}
 
         <div className="roster-filters-row">
           <div className="roster-search-box">
