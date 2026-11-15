@@ -151,79 +151,226 @@ export function HealthOverviewPage({ formData, result, onScreen }) {
         ))}
       </section>
 
-      {/* Physiological Mechanisms & Diagnostic Rationale for All 12 Clinical Features */}
+      {/* Plain-Language Clinical Guide (All 13 Features) */}
       <section className="card anatomy-card">
-        <h2 className="section-title">Physiological Mechanisms &amp; Diagnostic Rationale (All 12 Clinical Biomarkers)</h2>
+        <h2 className="section-title">Plain-Language Clinical Guide (All 13 Features)</h2>
         <p className="section-intro">
-          Understanding the biological pathophysiology underlying each diagnostic marker strengthens clinical decision-making.
+          A clear, clinician- and patient-friendly guide explaining what each test measures, why it matters for cardiovascular diagnosis, and standard healthy target ranges.
         </p>
 
         <div className="anatomy-categories-grid">
           {/* Group 1: Vitals & Metabolism */}
           <div className="anatomy-category-block">
-            <h3 className="anatomy-category-title">1. Hemodynamics &amp; Metabolic Homeostasis</h3>
+            <h3 className="anatomy-category-title">1. Vitals &amp; Metabolic Health</h3>
             <ul className="anatomy-list">
               <li>
-                <strong>Resting Blood Pressure (trestbps)</strong>
-                Systolic BP 90–120 mm Hg preserves aortic root elasticity. Sustained pressures &ge; 140 mm Hg generate cyclic shear stress, endothelial denudation, and smooth muscle hyperplasia.
+                <div className="anatomy-item-header">
+                  <strong>Resting Blood Pressure</strong>
+                  <span className="feature-code">trestbps</span>
+                </div>
+                <p className="anatomy-item-desc">
+                  <strong>What it is:</strong> Pressure inside arteries when the heart contracts at rest.
+                </p>
+                <p className="anatomy-item-meaning">
+                  <strong>Why it matters:</strong> Chronically high blood pressure forces the heart to work harder and damages arterial walls over time.
+                </p>
+                <p className="anatomy-item-target">
+                  <strong>Healthy Target:</strong> 90–120 mm Hg.
+                </p>
               </li>
               <li>
-                <strong>Total Serum Cholesterol (chol)</strong>
-                Levels &lt; 200 mg/dL maintain nitric oxide bioavailability. Elevated total and LDL cholesterol drive subendothelial apolipoprotein-B retention, initiating fatty streaks and fibroatheromas.
+                <div className="anatomy-item-header">
+                  <strong>Total Serum Cholesterol</strong>
+                  <span className="feature-code">chol</span>
+                </div>
+                <p className="anatomy-item-desc">
+                  <strong>What it is:</strong> Total amount of fat-like substances circulating in the bloodstream.
+                </p>
+                <p className="anatomy-item-meaning">
+                  <strong>Why it matters:</strong> Excess cholesterol sticks to vessel walls, forming fatty plaques that narrow coronary arteries.
+                </p>
+                <p className="anatomy-item-target">
+                  <strong>Healthy Target:</strong> Under 200 mg/dL.
+                </p>
               </li>
               <li>
-                <strong>Peak Exercise Heart Rate (thalach)</strong>
-                Peak exertional rate reflects sympathetic tone and chronotropic competence. Inability to reach age-predicted targets (&lt; 120 bpm) indicates autonomic neuropathy or rate-limiting occult ischemia.
+                <div className="anatomy-item-header">
+                  <strong>Peak Exercise Heart Rate</strong>
+                  <span className="feature-code">thalach</span>
+                </div>
+                <p className="anatomy-item-desc">
+                  <strong>What it is:</strong> Highest heart rate reached during treadmill exercise stress testing.
+                </p>
+                <p className="anatomy-item-meaning">
+                  <strong>Why it matters:</strong> A healthy heart pumps vigorously under effort; failure to reach target rate indicates poor stamina or restricted blood flow.
+                </p>
+                <p className="anatomy-item-target">
+                  <strong>Healthy Target:</strong> &ge; 150 bpm (or age-predicted maximum).
+                </p>
               </li>
               <li>
-                <strong>Fasting Blood Sugar (fbs)</strong>
-                Fasting glucose &le; 120 mg/dL protects microvascular capillary beds. Hyperglycemia (&gt; 120 mg/dL) accelerates advanced glycation end-products (AGEs), doubling vascular mortality risk.
+                <div className="anatomy-item-header">
+                  <strong>Fasting Blood Sugar</strong>
+                  <span className="feature-code">fbs</span>
+                </div>
+                <p className="anatomy-item-desc">
+                  <strong>What it is:</strong> Blood glucose level after fasting overnight for at least 8 hours.
+                </p>
+                <p className="anatomy-item-meaning">
+                  <strong>Why it matters:</strong> Elevated blood sugar damages microvascular blood vessel linings and doubles heart disease risk.
+                </p>
+                <p className="anatomy-item-target">
+                  <strong>Healthy Target:</strong> &le; 120 mg/dL (Normal).
+                </p>
               </li>
               <li>
-                <strong>Patient Chronological Age (age)</strong>
-                Age acts as a surrogate for lifetime exposure to hemodynamic pulse-wave velocity, arterial wall calcification, and microvascular rarefaction.
+                <div className="anatomy-item-header">
+                  <strong>Patient Chronological Age</strong>
+                  <span className="feature-code">age</span>
+                </div>
+                <p className="anatomy-item-desc">
+                  <strong>What it is:</strong> Patient&apos;s chronological age in years.
+                </p>
+                <p className="anatomy-item-meaning">
+                  <strong>Why it matters:</strong> Arteries naturally lose elasticity and accumulate plaque over decades, making age an important natural risk factor.
+                </p>
+                <p className="anatomy-item-target">
+                  <strong>Healthy Target:</strong> Under 45 years (risk rises progressively thereafter).
+                </p>
               </li>
             </ul>
           </div>
 
-          {/* Group 2: Electrocardiography & Stress */}
+          {/* Group 2: Symptoms, Demographics & Resting ECG */}
           <div className="anatomy-category-block">
-            <h3 className="anatomy-category-title">2. Electrocardiography &amp; Exercise Stress</h3>
+            <h3 className="anatomy-category-title">2. Symptoms, Demographics &amp; Resting ECG</h3>
             <ul className="anatomy-list">
               <li>
-                <strong>ST Depression Under Stress (oldpeak)</strong>
-                Subendocardial myocardium has the highest metabolic demand. Exertional ST depression &ge; 1.0 mm directly visualizes regional subendocardial ischemia during increased cardiac workload.
+                <div className="anatomy-item-header">
+                  <strong>Biological Sex</strong>
+                  <span className="feature-code">sex</span>
+                </div>
+                <p className="anatomy-item-desc">
+                  <strong>What it is:</strong> Biological sex recorded at birth (Male or Female).
+                </p>
+                <p className="anatomy-item-meaning">
+                  <strong>Why it matters:</strong> Men typically develop coronary artery disease at younger ages; risk in women rises sharply after menopause as estrogen declines.
+                </p>
+                <p className="anatomy-item-target">
+                  <strong>Role:</strong> Baseline demographic risk modifier in diagnostic models.
+                </p>
               </li>
               <li>
-                <strong>Peak Exercise ST Slope (slope)</strong>
-                Rapid upsloping ST is the normal repolarization adaptation. Flat or downsloping ST signifies delayed potassium efflux and impaired trans-sarcolemmal repolarization under ischemic stress.
+                <div className="anatomy-item-header">
+                  <strong>Chest Pain Presentation</strong>
+                  <span className="feature-code">cp</span>
+                </div>
+                <p className="anatomy-item-desc">
+                  <strong>What it is:</strong> Characterizes the patient&apos;s chest discomfort (Typical, Atypical, Non-anginal, or Asymptomatic).
+                </p>
+                <p className="anatomy-item-meaning">
+                  <strong>Why it matters:</strong> Anginal pain signals cardiac oxygen starvation. Silent (asymptomatic) presentation in high-risk patients often disguises severe multivessel disease.
+                </p>
+                <p className="anatomy-item-target">
+                  <strong>Healthy Target:</strong> Non-anginal or asymptomatic without underlying disease.
+                </p>
               </li>
               <li>
-                <strong>Resting Electrocardiogram (restecg)</strong>
-                Resting ST-T inversions or Left Ventricular Hypertrophy (LVH) indicate chronic left ventricular pressure afterload and increased myocardial oxygen consumption at rest.
+                <div className="anatomy-item-header">
+                  <strong>Exercise-Induced Angina</strong>
+                  <span className="feature-code">exang</span>
+                </div>
+                <p className="anatomy-item-desc">
+                  <strong>What it is:</strong> Whether physical exertion triggers chest tightness or pain.
+                </p>
+                <p className="anatomy-item-meaning">
+                  <strong>Why it matters:</strong> Discomfort during exertion directly indicates narrowed coronary arteries unable to meet cardiac workload.
+                </p>
+                <p className="anatomy-item-target">
+                  <strong>Healthy Target:</strong> No (Absent during exercise).
+                </p>
               </li>
               <li>
-                <strong>Exercise-Induced Angina (exang)</strong>
-                Exertional retrosternal discomfort signals regional adenosine and lactate release from cardiomyocytes when stenotic coronary arteries cannot meet oxygen demands.
+                <div className="anatomy-item-header">
+                  <strong>Resting Electrocardiogram</strong>
+                  <span className="feature-code">restecg</span>
+                </div>
+                <p className="anatomy-item-desc">
+                  <strong>What it is:</strong> Electrical recording of heart rhythm while lying comfortably at rest.
+                </p>
+                <p className="anatomy-item-meaning">
+                  <strong>Why it matters:</strong> Detects irregular rhythms, prior silent damage, or enlarged heart muscle (LVH) caused by high blood pressure.
+                </p>
+                <p className="anatomy-item-target">
+                  <strong>Healthy Target:</strong> Normal baseline ECG (Code 0).
+                </p>
               </li>
             </ul>
           </div>
 
-          {/* Group 3: Anatomy & Imaging */}
+          {/* Group 3: Stress Testing, Perfusion & Anatomy */}
           <div className="anatomy-category-block">
-            <h3 className="anatomy-category-title">3. Coronary Anatomy &amp; Perfusion Imaging</h3>
+            <h3 className="anatomy-category-title">3. Stress Testing, Perfusion &amp; Anatomy</h3>
             <ul className="anatomy-list">
               <li>
-                <strong>Fluoroscopy Calcified Vessels (ca)</strong>
-                Fluoroscopic radiopacity in epicardial arteries directly identifies intimal and medial calcified atherosclerotic plaques in the LAD, LCx, or RCA.
+                <div className="anatomy-item-header">
+                  <strong>ST Depression Under Stress</strong>
+                  <span className="feature-code">oldpeak</span>
+                </div>
+                <p className="anatomy-item-desc">
+                  <strong>What it is:</strong> Downward dip of the ECG line during exercise compared to rest.
+                </p>
+                <p className="anatomy-item-meaning">
+                  <strong>Why it matters:</strong> A drop of 1.0 mm or more indicates that the inner heart muscle is experiencing acute oxygen deprivation under stress.
+                </p>
+                <p className="anatomy-item-target">
+                  <strong>Healthy Target:</strong> Less than 1.0 mm dip.
+                </p>
               </li>
               <li>
-                <strong>Thallium-201 Scintigraphy (thal)</strong>
-                Nuclear thallium uptake reflects cellular potassium ATPase activity. Reversible defects indicate viable ischemic myocardium that can benefit from revascularization, whereas fixed defects signify transmural scar tissue.
+                <div className="anatomy-item-header">
+                  <strong>Peak Exercise ST Slope</strong>
+                  <span className="feature-code">slope</span>
+                </div>
+                <p className="anatomy-item-desc">
+                  <strong>What it is:</strong> Direction and slope of the ECG ST wave at maximum exercise.
+                </p>
+                <p className="anatomy-item-meaning">
+                  <strong>Why it matters:</strong> A healthy heart shows a steep upward slope. Flat or downward slopes indicate impaired electrical recovery due to ischemia.
+                </p>
+                <p className="anatomy-item-target">
+                  <strong>Healthy Target:</strong> Upsloping (Type 1).
+                </p>
               </li>
               <li>
-                <strong>Chest Pain Symptom Category (cp)</strong>
-                Asymptomatic presentations (Class 4) in high-risk patients often disguise silent myocardial ischemia, which is statistically associated with occult multi-vessel disease.
+                <div className="anatomy-item-header">
+                  <strong>Calcified Major Vessels</strong>
+                  <span className="feature-code">ca</span>
+                </div>
+                <p className="anatomy-item-desc">
+                  <strong>What it is:</strong> Count of main coronary arteries (0 to 3) showing visible calcium under X-ray fluoroscopy.
+                </p>
+                <p className="anatomy-item-meaning">
+                  <strong>Why it matters:</strong> Direct structural evidence of hardened atherosclerotic plaque narrowing coronary vessels.
+                </p>
+                <p className="anatomy-item-target">
+                  <strong>Healthy Target:</strong> 0 vessels (Completely clear arteries).
+                </p>
+              </li>
+              <li>
+                <div className="anatomy-item-header">
+                  <strong>Thallium Perfusion Scan</strong>
+                  <span className="feature-code">thal</span>
+                </div>
+                <p className="anatomy-item-desc">
+                  <strong>What it is:</strong> Nuclear imaging test tracing blood flow distribution across heart muscle tissue.
+                </p>
+                <p className="anatomy-item-meaning">
+                  <strong>Why it matters:</strong> Distinguishes normal blood flow from temporary oxygen starvation (reversible defect) or permanent scar tissue (fixed defect).
+                </p>
+                <p className="anatomy-item-target">
+                  <strong>Healthy Target:</strong> Normal myocardial blood flow (Code 3).
+                </p>
               </li>
             </ul>
           </div>
@@ -364,7 +511,7 @@ function RangeCard({ metric, formData }) {
       {/* Clinical Rationale Footer */}
       {metric.clinicalSignificance && (
         <p className="range-significance">
-          <strong>Pathophysiology:</strong> {metric.clinicalSignificance}
+          <strong>Clinical Meaning:</strong> {metric.clinicalSignificance}
         </p>
       )}
     </article>

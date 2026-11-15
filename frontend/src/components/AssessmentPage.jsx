@@ -357,6 +357,12 @@ export function AssessmentPage({
           </div>
         </div>
 
+        {error && (
+          <div className="alert-error" style={{ marginBottom: '1.25rem' }} role="alert">
+            {error}
+          </div>
+        )}
+
         <button type="submit" className="btn-primary btn-full" disabled={loading}>
           {loading ? 'Evaluating Biomarkers & Predicting Risk...' : 'Predict Heart Disease Risk & Save Visit'}
         </button>

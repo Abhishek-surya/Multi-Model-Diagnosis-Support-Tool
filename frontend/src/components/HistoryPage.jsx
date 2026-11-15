@@ -9,15 +9,24 @@ export function HistoryPage({
   onScreen,
   onOpenLatest,
   onOpenVisitReport,
+  onDeletePatient,
+  onClearAllPatients,
+  onImportBackup,
   onUpdateCharts
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [riskFilter, setRiskFilter] = useState('all'); // 'all', 'high', 'low'
   const [sortBy, setSortBy] = useState('recent'); // 'recent', 'name', 'visits'
+  const [metricCategory, setMetricCategory] = useState('all'); // 'all', 'vitals', 'ecg', 'imaging', 'demo'
   const [importError, setImportError] = useState(null);
   const fileInputRef = useRef(null);
 
   const ids = Object.keys(charts);
+
+  const displayedMetrics = useMemo(() => {
+    if (metricCategory === 'all') return TREND_METRICS;
+    return TREND_METRICS.filter((m) => m.category === metricCategory);
+  }, [metricCategory]);
 
   // Compute patient entries with metadata for filtering & sorting
   const patientRoster = useMemo(() => {
@@ -116,9 +125,13 @@ export function HistoryPage({
     reader.onload = (event) => {
       try {
         const parsed = parseImportedJson(event.target?.result);
-        const merged = { ...charts, ...parsed };
-        onUpdateCharts(merged);
-        alert(`Successfully imported patient records. Total patients: ${Object.keys(merged).length}`);
+        if (onImportBackup) {
+          onImportBackup(parsed);
+        } else if (onUpdateCharts) {
+          const merged = { ...charts, ...parsed };
+          onUpdateCharts(merged);
+        }
+        alert(`Successfully imported patient records. Total patients: ${Object.keys(parsed).length}`);
       } catch (err) {
         setImportError(err.message || 'Failed to parse JSON backup file.');
       }
@@ -130,13 +143,30 @@ export function HistoryPage({
   const handleDeletePatient = (patientId) => {
     const pName = charts[patientId]?.name || patientId;
     if (window.confirm(`Are you sure you want to permanently delete patient "${pName}" (${patientId}) and all their encounter records?`)) {
-      const next = { ...charts };
-      delete next[patientId];
-      onUpdateCharts(next);
-      const remainingIds = Object.keys(next);
+      if (onDeletePatient) {
+        onDeletePatient(patientId);
+      } else if (onUpdateCharts) {
+        const next = { ...charts };
+        delete next[patientId];
+        onUpdateCharts(next);
+      }
+      const remainingIds = Object.keys(charts).filter((id) => id !== patientId);
       if (remainingIds.length > 0) {
         onSelect(remainingIds[0]);
+      } else {
+        onSelect('');
       }
+    }
+  };
+
+  const handleClearAllPatients = () => {
+    if (window.confirm('Are you sure you want to permanently delete ALL patients and all clinical encounters from your records? This cannot be undone.')) {
+      if (onClearAllPatients) {
+        onClearAllPatients();
+      } else if (onUpdateCharts) {
+        onUpdateCharts({});
+      }
+      onSelect('');
     }
   };
 
@@ -193,6 +223,14 @@ export function HistoryPage({
               title="Import or restore patient charts from JSON backup"
             >
               Import Backup
+            </button>
+            <button
+              type="button"
+              className="btn-chip delete-btn"
+              onClick={handleClearAllPatients}
+              title="Permanently delete all patients and encounter history"
+            >
+              Clear All Patients
             </button>
             <input
               ref={fileInputRef}
@@ -355,40 +393,125 @@ export function HistoryPage({
             {/* Change Since Last Encounter */}
             {latest && previous && (
               <section className="card">
-                <h2 className="section-title">Change Since Last Visit</h2>
-                <p className="section-intro">
-                  Prior: {formatVisitDate(previous.recordedAt)} · Latest: {formatVisitDate(latest.recordedAt)}
-                </p>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', marginBottom: '14px' }}>
+                  <div>
+                    <h2 className="section-title">Change Since Last Visit</h2>
+                    <p className="section-intro">
+                      Prior: {formatVisitDate(previous.recordedAt)} · Latest: {formatVisitDate(latest.recordedAt)}
+                    </p>
+                  </div>
+                  <div className="roster-filter-chips">
+                    <button
+                      type="button"
+                      className={`filter-chip ${metricCategory === 'all' ? 'active' : ''}`}
+                      onClick={() => setMetricCategory('all')}
+                    >
+                      All Features ({TREND_METRICS.length})
+                    </button>
+                    <button
+                      type="button"
+                      className={`filter-chip ${metricCategory === 'vitals' ? 'active' : ''}`}
+                      onClick={() => setMetricCategory('vitals')}
+                    >
+                      Vitals &amp; Labs
+                    </button>
+                    <button
+                      type="button"
+                      className={`filter-chip ${metricCategory === 'ecg' ? 'active' : ''}`}
+                      onClick={() => setMetricCategory('ecg')}
+                    >
+                      ECG &amp; Symptoms
+                    </button>
+                    <button
+                      type="button"
+                      className={`filter-chip ${metricCategory === 'imaging' ? 'active' : ''}`}
+                      onClick={() => setMetricCategory('imaging')}
+                    >
+                      Vascular &amp; Scans
+                    </button>
+                    <button
+                      type="button"
+                      className={`filter-chip ${metricCategory === 'demo' ? 'active' : ''}`}
+                      onClick={() => setMetricCategory('demo')}
+                    >
+                      Age
+                    </button>
+                  </div>
+                </div>
+
                 <div className="compare-grid">
-                  {TREND_METRICS.map((metric) => (
+                  <ImpressionChange previous={previous.result} latest={latest.result} />
+                  {displayedMetrics.map((metric) => (
                     <CompareCard
                       key={metric.key}
                       metric={metric}
-                      previousValue={Number(previous.formData[metric.key])}
-                      latestValue={Number(latest.formData[metric.key])}
+                      previousRaw={getEncounterMetricValue(previous, metric)}
+                      latestRaw={getEncounterMetricValue(latest, metric)}
                     />
                   ))}
-                  <ImpressionChange previous={previous.result} latest={latest.result} />
                 </div>
               </section>
             )}
 
             {latest && !previous && (
               <div className="status-banner stable">
-                Initial visit on file. A second encounter for patient {record.name} will unlock visual change indicators and trend trajectories.
+                Initial visit on file. A second encounter for patient {record.name} will unlock visual change indicators and trend trajectories across all 13 clinical biomarkers.
               </div>
             )}
 
             {/* Trajectory Sparklines */}
             {visits.length >= 2 && (
               <section className="card">
-                <h2 className="section-title">Trajectory Across Encounters</h2>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', marginBottom: '14px' }}>
+                  <div>
+                    <h2 className="section-title">Trajectory Across Encounters</h2>
+                    <p className="section-intro">Longitudinal progression of all clinical features across {visits.length} clinical visits.</p>
+                  </div>
+                  <div className="roster-filter-chips">
+                    <button
+                      type="button"
+                      className={`filter-chip ${metricCategory === 'all' ? 'active' : ''}`}
+                      onClick={() => setMetricCategory('all')}
+                    >
+                      All Features ({TREND_METRICS.length})
+                    </button>
+                    <button
+                      type="button"
+                      className={`filter-chip ${metricCategory === 'vitals' ? 'active' : ''}`}
+                      onClick={() => setMetricCategory('vitals')}
+                    >
+                      Vitals &amp; Labs
+                    </button>
+                    <button
+                      type="button"
+                      className={`filter-chip ${metricCategory === 'ecg' ? 'active' : ''}`}
+                      onClick={() => setMetricCategory('ecg')}
+                    >
+                      ECG &amp; Symptoms
+                    </button>
+                    <button
+                      type="button"
+                      className={`filter-chip ${metricCategory === 'imaging' ? 'active' : ''}`}
+                      onClick={() => setMetricCategory('imaging')}
+                    >
+                      Vascular &amp; Scans
+                    </button>
+                    <button
+                      type="button"
+                      className={`filter-chip ${metricCategory === 'demo' ? 'active' : ''}`}
+                      onClick={() => setMetricCategory('demo')}
+                    >
+                      Age
+                    </button>
+                  </div>
+                </div>
+
                 <div className="trend-grid">
-                  {TREND_METRICS.map((metric) => (
+                  {displayedMetrics.map((metric) => (
                     <TrendChart
                       key={metric.key}
                       metric={metric}
-                      values={visits.map((visit) => Number(visit.formData[metric.key]))}
+                      values={visits.map((visit) => getEncounterMetricValue(visit, metric))}
                     />
                   ))}
                 </div>
@@ -443,13 +566,66 @@ export function HistoryPage({
   );
 }
 
-function CompareCard({ metric, previousValue, latestValue }) {
-  const delta = Math.round((latestValue - previousValue) * 10) / 10;
-  const improved = metric.lowerIsBetter ? delta < 0 : delta > 0;
-  const worsened = metric.lowerIsBetter ? delta > 0 : delta < 0;
+function getEncounterMetricValue(encounter, metric) {
+  if (!encounter) return null;
+  if (metric.isModel || metric.key === 'probability') {
+    const prob = encounter.result?.probability_percentage ??
+      (encounter.result?.probability != null ? Math.round(encounter.result.probability * 1000) / 10 : null);
+    return prob;
+  }
+  const raw = encounter.formData?.[metric.key];
+  return raw !== undefined && raw !== null ? raw : null;
+}
+
+function CompareCard({ metric, previousRaw, latestRaw }) {
+  if (metric.categorical) {
+    const prevStr = previousRaw !== null && previousRaw !== undefined ? String(previousRaw) : '';
+    const latestStr = latestRaw !== null && latestRaw !== undefined ? String(latestRaw) : '';
+    const prevText = metric.labels?.[prevStr] || metric.labels?.[`${Number(prevStr).toFixed(1)}`] || (prevStr ? `Type ${prevStr}` : '—');
+    const currText = metric.labels?.[latestStr] || metric.labels?.[`${Number(latestStr).toFixed(1)}`] || (latestStr ? `Type ${latestStr}` : '—');
+    const changed = prevStr !== latestStr;
+
+    let tone = 'same';
+    if (changed && metric.lowerIsBetter !== null) {
+      const pNum = Number(prevStr);
+      const cNum = Number(latestStr);
+      if (!isNaN(pNum) && !isNaN(cNum)) {
+        tone = (metric.lowerIsBetter ? cNum < pNum : cNum > pNum) ? 'better' : 'worse';
+      }
+    }
+
+    return (
+      <article className="compare-card">
+        <header>
+          <h3>{metric.label}</h3>
+          <span className={`delta ${tone}`}>
+            {!changed ? 'Unchanged' : tone === 'better' ? 'Improved' : tone === 'worse' ? 'Worsened' : 'Changed'}
+          </span>
+        </header>
+        <div className="cat-compare-rows">
+          <div className="cat-row">
+            <span className="cat-label">Prior:</span>
+            <span className="cat-val">{prevText}</span>
+          </div>
+          <div className="cat-row">
+            <span className="cat-label">Latest:</span>
+            <span className={`cat-val ${tone === 'better' ? 'text-stable' : tone === 'worse' ? 'text-attention' : ''}`}>{currText}</span>
+          </div>
+        </div>
+        {metric.description && <p className="cat-hint">{metric.description}</p>}
+      </article>
+    );
+  }
+
+  const prevNum = Number(previousRaw) || 0;
+  const latestNum = Number(latestRaw) || 0;
+  const delta = Math.round((latestNum - prevNum) * 10) / 10;
+  const improved = metric.lowerIsBetter === null ? false : (metric.lowerIsBetter ? delta < 0 : delta > 0);
+  const worsened = metric.lowerIsBetter === null ? false : (metric.lowerIsBetter ? delta > 0 : delta < 0);
   const tone = delta === 0 ? 'same' : improved ? 'better' : worsened ? 'worse' : 'same';
-  const previousWidth = Math.max(8, (previousValue / metric.max) * 100);
-  const latestWidth = Math.max(8, (latestValue / metric.max) * 100);
+  const max = Math.max(metric.max || 1, prevNum, latestNum, 1);
+  const previousWidth = Math.max(8, (prevNum / max) * 100);
+  const latestWidth = Math.max(8, (latestNum / max) * 100);
 
   return (
     <article className="compare-card">
@@ -464,15 +640,16 @@ function CompareCard({ metric, previousValue, latestValue }) {
         <div className="bar-track">
           <span className="bar prior" style={{ width: `${Math.min(100, previousWidth)}%` }} />
         </div>
-        <strong>{previousValue}</strong>
+        <strong>{prevNum} {metric.unit}</strong>
       </div>
       <div className="bar-row">
         <span>Latest</span>
         <div className="bar-track">
           <span className={`bar latest ${tone}`} style={{ width: `${Math.min(100, latestWidth)}%` }} />
         </div>
-        <strong>{latestValue}</strong>
+        <strong>{latestNum} {metric.unit}</strong>
       </div>
+      {metric.description && <p className="cat-hint">{metric.description}</p>}
     </article>
   );
 }
@@ -509,29 +686,39 @@ function ImpressionChange({ previous, latest }) {
 }
 
 function TrendChart({ metric, values }) {
-  const max = Math.max(metric.max, ...values, 1);
-  const points = values
+  const numValues = values.map((v) => (v !== null && v !== undefined ? Number(v) : 0));
+  const max = Math.max(metric.max || 1, ...numValues, 1);
+  const points = numValues
     .map((value, index) => {
-      const x = values.length === 1 ? 50 : (index / (values.length - 1)) * 100;
+      const x = numValues.length === 1 ? 50 : (index / (numValues.length - 1)) * 100;
       const y = 90 - (value / max) * 70;
       return `${x},${y}`;
     })
     .join(' ');
+
+  let subText = '';
+  if (metric.categorical) {
+    const firstStr = values[0] !== null && values[0] !== undefined ? String(values[0]) : '';
+    const lastStr = values[values.length - 1] !== null && values[values.length - 1] !== undefined ? String(values[values.length - 1]) : '';
+    const firstLabel = metric.labels?.[firstStr] || metric.labels?.[`${Number(firstStr).toFixed(1)}`] || firstStr;
+    const lastLabel = metric.labels?.[lastStr] || metric.labels?.[`${Number(lastStr).toFixed(1)}`] || lastStr;
+    subText = `${firstLabel} → ${lastLabel}`;
+  } else {
+    subText = `${values[0]} → ${values[values.length - 1]} ${metric.unit}`.trim();
+  }
 
   return (
     <article className="trend-card">
       <h3>{metric.label}</h3>
       <svg viewBox="0 0 100 100" className="sparkline" aria-hidden="true">
         <polyline points={points} fill="none" stroke="#0f766e" strokeWidth="3" />
-        {values.map((value, index) => {
-          const x = values.length === 1 ? 50 : (index / (values.length - 1)) * 100;
+        {numValues.map((value, index) => {
+          const x = numValues.length === 1 ? 50 : (index / (numValues.length - 1)) * 100;
           const y = 90 - (value / max) * 70;
-          return <circle key={index} cx={x} cy={y} r="2.4" fill="#14b8a6" />;
+          return <circle key={index} cx={x} cy={y} r="2.8" fill="#14b8a6" />;
         })}
       </svg>
-      <p>
-        {values[0]} → {values[values.length - 1]} {metric.unit}
-      </p>
+      <p title={subText}>{subText}</p>
     </article>
   );
 }

@@ -209,6 +209,18 @@ class TestDatabaseAndAPI(unittest.TestCase):
         self.assertEqual(patient.name, "Bulk Patient One")
         self.assertEqual(len(patient.encounters), 1)
 
+        # Repeating sync with the exact same payload must NOT create duplicates
+        res_repeat = self.client.post("/api/patients/sync?clinician_email=dr.smith@cardio.org", json=payload)
+        self.assertEqual(res_repeat.status_code, 200)
+        self.assertEqual(res_repeat.json().get("imported_visits"), 0)
+        self.db.refresh(patient)
+        self.assertEqual(len(patient.encounters), 1)
+
+        # Verify DELETE /api/patients clears all patients for clinician
+        res_clear = self.client.delete("/api/patients?clinician_email=dr.smith@cardio.org")
+        self.assertEqual(res_clear.status_code, 200)
+        self.assertEqual(self.db.query(PatientModel).count(), 0)
+
     def test_06_auth_endpoints(self):
         """Verify authentication endpoints: config, dev-login, and me."""
         # 1. Config endpoint

@@ -165,7 +165,7 @@ export const REFERENCE_RANGES = [
     healthyMin: 90,
     healthyMax: 120,
     formKey: 'trestbps',
-    clinicalSignificance: 'Systolic BP under 120 mm Hg prevents barotrauma, arterial stiffening, and subendocardial shear stress.'
+    clinicalSignificance: 'Keeping resting pressure under 120 mm Hg protects artery walls from excessive strain and reduces the heart’s workload.'
   },
   {
     id: 'chol',
@@ -181,7 +181,7 @@ export const REFERENCE_RANGES = [
     healthyMin: 80,
     healthyMax: 199,
     formKey: 'chol',
-    clinicalSignificance: 'Circulating cholesterol < 200 mg/dL prevents ApoB lipid core deposition and coronary plaque formation.'
+    clinicalSignificance: 'Keeping cholesterol under 200 mg/dL prevents fatty plaque buildup that narrows coronary arteries.'
   },
   {
     id: 'hr',
@@ -198,7 +198,7 @@ export const REFERENCE_RANGES = [
     healthyMax: 205,
     invertScale: true,
     formKey: 'thalach',
-    clinicalSignificance: 'Ability to achieve target heart rate demonstrates chronotropic competence and coronary perfusion reserve.'
+    clinicalSignificance: 'A strong peak heart rate during exercise demonstrates good stamina and healthy blood flow to the heart muscle.'
   },
   {
     id: 'sugar',
@@ -219,7 +219,7 @@ export const REFERENCE_RANGES = [
       { value: '0.0', label: '<= 120 mg/dL (Normal)', status: 'healthy' },
       { value: '1.0', label: '> 120 mg/dL (Hyperglycemia)', status: 'high' }
     ],
-    clinicalSignificance: 'Euglycemia protects the vascular glycocalyx and suppresses advanced glycation end-product microangiopathy.'
+    clinicalSignificance: 'Normal fasting blood sugar (≤ 120 mg/dL) protects delicate blood vessel linings and lowers long-term cardiovascular risk.'
   },
   {
     id: 'age',
@@ -235,7 +235,7 @@ export const REFERENCE_RANGES = [
     healthyMin: 20,
     healthyMax: 44,
     formKey: 'age',
-    clinicalSignificance: 'Chronological age reflects lifetime cumulative hemodynamic wear, vascular senescence, and intimal remodeling.'
+    clinicalSignificance: 'Arteries gradually stiffen and accumulate plaque over decades, making advancing age a key natural risk factor.'
   },
 
   // --- 2. Electrocardiography & Stress Testing ---
@@ -253,7 +253,7 @@ export const REFERENCE_RANGES = [
     healthyMin: 0.0,
     healthyMax: 0.9,
     formKey: 'oldpeak',
-    clinicalSignificance: 'Exertional ST-segment depression provides direct electrocardiographic evidence of subendocardial ischemia.'
+    clinicalSignificance: 'A downward ECG dip of 1.0 mm or more during exercise indicates the heart muscle is not receiving enough oxygen.'
   },
   {
     id: 'slope',
@@ -275,7 +275,7 @@ export const REFERENCE_RANGES = [
       { value: '2.0', label: '2: Flat (Equivocal repolarization)', status: 'caution' },
       { value: '3.0', label: '3: Downsloping (Severe ischemia)', status: 'high' }
     ],
-    clinicalSignificance: 'An upsloping ST segment is normal under stress. Flat or downsloping ST signifies delayed myocardial repolarization.'
+    clinicalSignificance: 'A healthy ECG ST wave rises steeply after exercise. A flat or downward slope warns of reduced coronary blood flow.'
   },
   {
     id: 'restecg',
@@ -297,7 +297,7 @@ export const REFERENCE_RANGES = [
       { value: '1.0', label: '1: ST-T wave inversion/depression', status: 'caution' },
       { value: '2.0', label: '2: LVH by Estes criteria', status: 'high' }
     ],
-    clinicalSignificance: 'Resting ST-T wave changes or LVH reveal chronic hypertensive pressure overload and baseline repolarization strain.'
+    clinicalSignificance: 'A normal resting ECG confirms regular rhythm without signs of past damage or heart wall thickening (LVH).'
   },
   {
     id: 'exang',
@@ -318,7 +318,7 @@ export const REFERENCE_RANGES = [
       { value: '0.0', label: 'No: Absent during stress', status: 'healthy' },
       { value: '1.0', label: 'Yes: Triggered by exertion', status: 'high' }
     ],
-    clinicalSignificance: 'Angina provoked by exertion indicates myocardial oxygen demand exceeding stenotic coronary blood supply.'
+    clinicalSignificance: 'Chest tightness or discomfort triggered specifically by physical exertion signals narrowed arteries that cannot meet oxygen demand.'
   },
 
   // --- 3. Cardiac Anatomy, Imaging & Demographics ---
@@ -343,7 +343,7 @@ export const REFERENCE_RANGES = [
       { value: '2.0', label: '2: Two vessels calcified', status: 'high' },
       { value: '3.0', label: '3: Three vessels calcified', status: 'high' }
     ],
-    clinicalSignificance: 'Direct fluoroscopic visualization of major coronary artery calcification confirms structural atherosclerotic disease.'
+    clinicalSignificance: 'Seeing 0 calcified vessels under X-ray is ideal. Any calcified vessel indicates hardened plaque inside coronary arteries.'
   },
   {
     id: 'thal',
@@ -365,7 +365,7 @@ export const REFERENCE_RANGES = [
       { value: '6.0', label: '6: Fixed defect (Infarct scar)', status: 'caution' },
       { value: '7.0', label: '7: Reversible defect (Transient ischemia)', status: 'high' }
     ],
-    clinicalSignificance: 'Nuclear scintigraphy identifies salvageable under-perfused myocardium (reversible) versus scarred tissue (fixed defect).'
+    clinicalSignificance: 'Nuclear scans show whether heart tissue receives normal blood flow, temporary lack of oxygen, or permanent scar.'
   },
   {
     id: 'cp',
@@ -388,14 +388,146 @@ export const REFERENCE_RANGES = [
       { value: '3.0', label: '3: Non-anginal pain', status: 'caution' },
       { value: '4.0', label: '4: Asymptomatic (Silent ischemia)', status: 'high' }
     ],
-    clinicalSignificance: 'In clinical registries, asymptomatic presentations in at-risk patients often disguise occult, severe ischemic disease.'
+    clinicalSignificance: 'Typical chest pain prompts immediate investigation, but silent (asymptomatic) blockages can also disguise high cardiovascular risk.'
   }
 ];
 
-export const TREND_METRICS = [
-  { key: 'trestbps', label: 'Blood pressure', unit: 'mm Hg', max: 200, lowerIsBetter: true },
-  { key: 'chol', label: 'Cholesterol', unit: 'mg/dL', max: 400, lowerIsBetter: true },
-  { key: 'thalach', label: 'Peak heart rate', unit: 'bpm', max: 220, lowerIsBetter: false },
-  { key: 'oldpeak', label: 'ST depression', unit: 'mm', max: 10, lowerIsBetter: true },
-  { key: 'ca', label: 'Major vessels', unit: '', max: 3, lowerIsBetter: true }
+export const ALL_CLINICAL_METRICS = [
+  // 1. Overall Model Diagnostic Risk Probability
+  {
+    key: 'probability',
+    label: 'Model Risk Probability',
+    unit: '%',
+    max: 100,
+    lowerIsBetter: true,
+    isModel: true,
+    category: 'vitals',
+    description: 'Predicted probability of coronary heart disease from ML model'
+  },
+  // 2. Hemodynamic & Laboratory Vitals
+  {
+    key: 'trestbps',
+    label: 'Resting Blood Pressure',
+    unit: 'mm Hg',
+    max: 200,
+    lowerIsBetter: true,
+    category: 'vitals',
+    description: 'Resting systolic blood pressure upon admission'
+  },
+  {
+    key: 'chol',
+    label: 'Serum Cholesterol',
+    unit: 'mg/dL',
+    max: 400,
+    lowerIsBetter: true,
+    category: 'vitals',
+    description: 'Total serum cholesterol concentration'
+  },
+  {
+    key: 'thalach',
+    label: 'Peak Exercise Heart Rate',
+    unit: 'bpm',
+    max: 220,
+    lowerIsBetter: false,
+    category: 'vitals',
+    description: 'Maximum heart rate achieved during exercise stress testing'
+  },
+  {
+    key: 'fbs',
+    label: 'Fasting Blood Sugar',
+    unit: '',
+    max: 1,
+    categorical: true,
+    labels: { '0.0': '<= 120 mg/dL (Normal)', '1.0': '> 120 mg/dL (Elevated)' },
+    lowerIsBetter: true,
+    category: 'vitals',
+    description: 'Fasting blood sugar above 120 mg/dL'
+  },
+  // 3. ECG & Stress Symptom Features
+  {
+    key: 'oldpeak',
+    label: 'ST Depression',
+    unit: 'mm',
+    max: 8,
+    lowerIsBetter: true,
+    category: 'ecg',
+    description: 'Exercise-induced ST segment depression relative to rest'
+  },
+  {
+    key: 'slope',
+    label: 'Peak Exercise ST Slope',
+    unit: '',
+    max: 3,
+    categorical: true,
+    labels: SLOPE_LABELS,
+    lowerIsBetter: true,
+    category: 'ecg',
+    description: 'Slope of peak exercise ST segment (Upsloping, Flat, Downsloping)'
+  },
+  {
+    key: 'restecg',
+    label: 'Resting ECG Result',
+    unit: '',
+    max: 2,
+    categorical: true,
+    labels: RESTECG_LABELS,
+    lowerIsBetter: true,
+    category: 'ecg',
+    description: 'Resting electrocardiographic findings'
+  },
+  {
+    key: 'cp',
+    label: 'Chest Pain Presentation',
+    unit: '',
+    max: 4,
+    categorical: true,
+    labels: CP_LABELS,
+    lowerIsBetter: true,
+    category: 'ecg',
+    description: 'Clinical chest pain classification'
+  },
+  {
+    key: 'exang',
+    label: 'Exercise-Induced Angina',
+    unit: '',
+    max: 1,
+    categorical: true,
+    labels: { '0.0': 'No (Absent)', '1.0': 'Yes (Present)' },
+    lowerIsBetter: true,
+    category: 'ecg',
+    description: 'Angina provoked during treadmill or bicycle exercise'
+  },
+  // 4. Vascular & Nuclear Imaging Scans
+  {
+    key: 'ca',
+    label: 'Major Vessels (Fluoroscopy)',
+    unit: 'vessels',
+    max: 3,
+    lowerIsBetter: true,
+    category: 'imaging',
+    description: 'Number of major coronary vessels colored by fluoroscopy (0-3)'
+  },
+  {
+    key: 'thal',
+    label: 'Thallium Nuclear Scan',
+    unit: '',
+    max: 7,
+    categorical: true,
+    labels: THAL_LABELS,
+    lowerIsBetter: null,
+    category: 'imaging',
+    description: 'Myocardial nuclear perfusion scan'
+  },
+  // 5. Patient Demographics
+  {
+    key: 'age',
+    label: 'Patient Age',
+    unit: 'yrs',
+    max: 100,
+    lowerIsBetter: null,
+    category: 'demo',
+    description: 'Age in years at time of encounter'
+  }
 ];
+
+export const TREND_METRICS = ALL_CLINICAL_METRICS;
