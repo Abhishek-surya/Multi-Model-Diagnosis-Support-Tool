@@ -77,12 +77,10 @@ export default function App() {
         }
         if (res && res.ok) {
           const dbCharts = await res.json();
-          if (isMounted && dbCharts && Object.keys(dbCharts).length > 0) {
-            setCharts((local) => {
-              const merged = { ...local, ...dbCharts };
-              saveCharts(merged);
-              return merged;
-            });
+          if (isMounted) {
+            const resolved = dbCharts && typeof dbCharts === 'object' ? dbCharts : {};
+            setCharts(resolved);
+            saveCharts(resolved);
           }
         }
       } catch {
@@ -227,6 +225,9 @@ export default function App() {
       thal: parseFloat(formData.thal)
     };
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+
     try {
       let response;
       const emailParam = user?.email ? `?clinician_email=${encodeURIComponent(user.email)}` : '';
@@ -238,7 +239,8 @@ export default function App() {
           headers: {
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify(payload)
+          body: JSON.stringify(payload),
+          signal: controller.signal
         });
 
         // If relative proxy failed with 500/502/504 and API_BASE_URL wasn't overridden, try direct backend URL
@@ -248,10 +250,14 @@ export default function App() {
             headers: {
               'Content-Type': 'application/json'
             },
-            body: JSON.stringify(payload)
+            body: JSON.stringify(payload),
+            signal: controller.signal
           });
         }
       } catch (networkErr) {
+        if (networkErr.name === 'AbortError') {
+          throw networkErr;
+        }
         // If relative fetch failed entirely (e.g. proxy unreachable), try direct backend URL
         if (!API_BASE_URL) {
           response = await fetch(`http://127.0.0.1:8000/predict${emailParam}`, {
@@ -259,7 +265,8 @@ export default function App() {
             headers: {
               'Content-Type': 'application/json'
             },
-            body: JSON.stringify(payload)
+            body: JSON.stringify(payload),
+            signal: controller.signal
           });
         } else {
           throw networkErr;
@@ -293,15 +300,20 @@ export default function App() {
       setResult(data);
       goTo('results');
     } catch (err) {
-      const isNetworkError =
-        err instanceof TypeError ||
-        /Failed to fetch|NetworkError|Load failed/i.test(err.message || '');
-      setError(
-        isNetworkError
-          ? 'Unable to reach the screening service. Please check that the FastAPI backend is running on http://127.0.0.1:8000.'
-          : err.message || 'Unable to complete screening right now.'
-      );
+      if (err.name === 'AbortError') {
+        setError('Screening request timed out after 15 seconds. Please ensure the backend server is running on http://127.0.0.1:8000.');
+      } else {
+        const isNetworkError =
+          err instanceof TypeError ||
+          /Failed to fetch|NetworkError|Load failed/i.test(err.message || '');
+        setError(
+          isNetworkError
+            ? 'Unable to reach the screening service. Please check that the FastAPI backend is running on http://127.0.0.1:8000.'
+            : err.message || 'Unable to complete screening right now.'
+        );
+      }
     } finally {
+      clearTimeout(timeoutId);
       setLoading(false);
     }
   };
@@ -367,42 +379,114 @@ export default function App() {
     }
   };
 
-  const handleUpdateCharts = async (newCharts) => {
-    setCharts(newCharts);
-    saveCharts(newCharts);
+  const handleDeletePatient = async (patientId) => {
+    const normalizedId = normalizePatientId(patientId);
 
-    // Sync updates (e.g. deletion, backup restore) to SQL database, scoped to clinician
-    if (!user?.email) return;
-    const emailParam = `?clinician_email=${encodeURIComponent(user.email)}`;
-    try {
-      const syncUrl = API_BASE_URL
-        ? `${API_BASE_URL}/api/patients/sync${emailParam}`
-        : `/api/patients/sync${emailParam}`;
-      let res;
+    // 1. Immediately update local state & local storage
+    setCharts((prev) => {
+      const next = { ...prev };
+      delete next[patientId];
+      delete next[normalizedId];
+      Object.keys(next).forEach((k) => {
+        if (normalizePatientId(k) === normalizedId || k === patientId) {
+          delete next[k];
+        }
+      });
+      saveCharts(next);
+      return next;
+    });
+
+    if (historyPatientId === patientId || normalizePatientId(historyPatientId) === normalizedId) {
+      setHistoryPatientId('');
+    }
+
+    // 2. Cascade delete in SQL database
+    if (user?.email) {
+      const emailParam = encodeURIComponent(user.email);
+      const encId = encodeURIComponent(patientId);
+      const deleteUrl = API_BASE_URL
+        ? `${API_BASE_URL}/api/patients/${encId}?clinician_email=${emailParam}`
+        : `/api/patients/${encId}?clinician_email=${emailParam}`;
       try {
-        res = await fetch(syncUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(newCharts)
-        });
+        let res = await fetch(deleteUrl, { method: 'DELETE' });
         if (!res.ok && !API_BASE_URL) {
-          await fetch(`http://127.0.0.1:8000/api/patients/sync${emailParam}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(newCharts)
+          await fetch(`http://127.0.0.1:8000/api/patients/${encId}?clinician_email=${emailParam}`, {
+            method: 'DELETE'
           });
         }
       } catch {
         if (!API_BASE_URL) {
-          await fetch(`http://127.0.0.1:8000/api/patients/sync${emailParam}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(newCharts)
+          await fetch(`http://127.0.0.1:8000/api/patients/${encId}?clinician_email=${emailParam}`, {
+            method: 'DELETE'
           }).catch(() => {});
         }
       }
-    } catch {
-      // Gracefully continue even if offline
+    }
+  };
+
+  const handleClearAllPatients = async () => {
+    // 1. Clear local state and local storage immediately
+    setCharts({});
+    saveCharts({});
+    setHistoryPatientId('');
+
+    // 2. Clear SQL database records for this clinician
+    if (user?.email) {
+      const emailParam = encodeURIComponent(user.email);
+      const clearUrl = API_BASE_URL
+        ? `${API_BASE_URL}/api/patients?clinician_email=${emailParam}`
+        : `/api/patients?clinician_email=${emailParam}`;
+      try {
+        let res = await fetch(clearUrl, { method: 'DELETE' });
+        if (!res.ok && !API_BASE_URL) {
+          await fetch(`http://127.0.0.1:8000/api/patients?clinician_email=${emailParam}`, {
+            method: 'DELETE'
+          });
+        }
+      } catch {
+        if (!API_BASE_URL) {
+          await fetch(`http://127.0.0.1:8000/api/patients?clinician_email=${emailParam}`, {
+            method: 'DELETE'
+          }).catch(() => {});
+        }
+      }
+    }
+  };
+
+  const handleImportBackup = async (parsedCharts) => {
+    setCharts((prev) => {
+      const merged = { ...prev, ...parsedCharts };
+      saveCharts(merged);
+      return merged;
+    });
+
+    if (user?.email) {
+      const emailParam = encodeURIComponent(user.email);
+      const syncUrl = API_BASE_URL
+        ? `${API_BASE_URL}/api/patients/sync?clinician_email=${emailParam}`
+        : `/api/patients/sync?clinician_email=${emailParam}`;
+      try {
+        let res = await fetch(syncUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(parsedCharts)
+        });
+        if (!res.ok && !API_BASE_URL) {
+          await fetch(`http://127.0.0.1:8000/api/patients/sync?clinician_email=${emailParam}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(parsedCharts)
+          });
+        }
+      } catch {
+        if (!API_BASE_URL) {
+          await fetch(`http://127.0.0.1:8000/api/patients/sync?clinician_email=${emailParam}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(parsedCharts)
+          }).catch(() => {});
+        }
+      }
     }
   };
 
@@ -485,7 +569,9 @@ export default function App() {
               onScreen={startNewAssessment}
               onOpenLatest={(patientId) => openPatientChart(patientId)}
               onOpenVisitReport={viewVisitReport}
-              onUpdateCharts={handleUpdateCharts}
+              onDeletePatient={handleDeletePatient}
+              onClearAllPatients={handleClearAllPatients}
+              onImportBackup={handleImportBackup}
             />
           )}
 

@@ -216,9 +216,24 @@ def delete_patient(db: Session, patient_id: str, clinician_id: int) -> bool:
     return True
 
 
+def delete_all_patients(db: Session, clinician_id: int) -> int:
+    """Cascade deletes all patients and their encounters for a given clinician."""
+    patients = (
+        db.query(PatientModel)
+        .filter(PatientModel.clinician_id == clinician_id)
+        .all()
+    )
+    count = len(patients)
+    for p in patients:
+        db.delete(p)
+    db.commit()
+    return count
+
+
 def import_bulk_charts(db: Session, charts: Dict[str, Any], clinician_id: int) -> Tuple[int, int]:
     """
     Upserts patient charts from JSON backup into SQL database, scoped to a clinician.
+    Guarantees zero duplicate encounters across repeated syncs or imports.
     Returns (imported_patients_count, imported_visits_count).
     """
     imported_patients = 0
@@ -235,6 +250,12 @@ def import_bulk_charts(db: Session, charts: Dict[str, Any], clinician_id: int) -
         patient = get_or_create_patient(db, patient_id=patient_id, clinician_id=clinician_id, name=name)
         imported_patients += 1
 
+        # Cache existing encounters for this patient to prevent duplication
+        existing_ids = {str(enc.id) for enc in patient.encounters}
+        existing_timestamps = {
+            enc.recorded_at.isoformat() for enc in patient.encounters if enc.recorded_at
+        }
+
         visits = record.get("visits") or []
         for visit in visits:
             if not isinstance(visit, dict):
@@ -242,6 +263,16 @@ def import_bulk_charts(db: Session, charts: Dict[str, Any], clinician_id: int) -
             form_data = visit.get("formData") or {}
             result = visit.get("result")
             if not result:
+                continue
+
+            visit_id = str(visit.get("id") or "")
+            if visit_id and visit_id in existing_ids:
+                # Encounter already exists by ID
+                continue
+
+            recorded_at_raw = visit.get("recordedAt")
+            if recorded_at_raw and recorded_at_raw in existing_timestamps:
+                # Encounter already exists with exact ISO timestamp
                 continue
 
             # Ensure all 13 features are present
@@ -265,19 +296,45 @@ def import_bulk_charts(db: Session, charts: Dict[str, Any], clinician_id: int) -
                 continue
 
             recorded_at_dt = None
-            if visit.get("recordedAt"):
+            if recorded_at_raw:
                 try:
-                    recorded_at_dt = datetime.fromisoformat(visit["recordedAt"].replace("Z", "+00:00"))
+                    recorded_at_dt = datetime.fromisoformat(recorded_at_raw.replace("Z", "+00:00"))
                 except Exception:
                     recorded_at_dt = None
 
-            create_encounter_with_prediction(
+            # Deep duplicate check against existing encounters on this patient
+            is_duplicate = False
+            for enc in patient.encounters:
+                if recorded_at_dt and enc.recorded_at:
+                    dt_a = enc.recorded_at.replace(tzinfo=None) if enc.recorded_at.tzinfo else enc.recorded_at
+                    dt_b = recorded_at_dt.replace(tzinfo=None) if recorded_at_dt.tzinfo else recorded_at_dt
+                    if abs((dt_a - dt_b).total_seconds()) < 1.0:
+                        is_duplicate = True
+                        break
+                elif (
+                    abs(enc.age - biomarkers["age"]) < 0.01
+                    and abs(enc.trestbps - biomarkers["trestbps"]) < 0.01
+                    and abs(enc.chol - biomarkers["chol"]) < 0.01
+                    and abs(enc.thalach - biomarkers["thalach"]) < 0.01
+                    and abs(enc.oldpeak - biomarkers["oldpeak"]) < 0.01
+                ):
+                    is_duplicate = True
+                    break
+
+            if is_duplicate:
+                continue
+
+            new_enc = create_encounter_with_prediction(
                 db=db,
                 patient=patient,
                 biomarkers=biomarkers,
                 prediction_result=result,
                 recorded_at=recorded_at_dt
             )
+            patient.encounters.append(new_enc)
+            existing_ids.add(str(new_enc.id))
+            if new_enc.recorded_at:
+                existing_timestamps.add(new_enc.recorded_at.isoformat())
             imported_visits += 1
 
     return imported_patients, imported_visits

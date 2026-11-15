@@ -21,6 +21,7 @@ try:
         get_patient_roster,
         get_patient_by_id,
         delete_patient,
+        delete_all_patients,
         import_bulk_charts,
         get_clinician_by_email,
         get_or_create_clinician
@@ -41,6 +42,7 @@ except ImportError:
         get_patient_roster,
         get_patient_by_id,
         delete_patient,
+        delete_all_patients,
         import_bulk_charts,
         get_clinician_by_email,
         get_or_create_clinician
@@ -315,6 +317,19 @@ def get_single_patient_chart(
         "name": patient.name,
         "visits": [enc.to_dict() for enc in patient.encounters]
     }
+
+
+@app.delete("/api/patients")
+def remove_all_patients(
+    db: Session = Depends(get_db),
+    clinician_email: Optional[str] = Query(None)
+):
+    """Delete all patients and cascade delete all encounters for the authenticated clinician."""
+    clinician_id = resolve_clinician_id(db, clinician_email)
+    if not clinician_id:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Clinician not identified.")
+    deleted_count = delete_all_patients(db, clinician_id)
+    return {"message": f"Successfully deleted {deleted_count} patient(s) and all associated records."}
 
 
 @app.delete("/api/patients/{patient_id}")
