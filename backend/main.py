@@ -10,8 +10,7 @@ try:
     from backend.schemas import (
         HeartDiseaseInput,
         PredictionResponse,
-        PatientSummaryResponse,
-        BulkSyncResponse
+        PatientSummaryResponse
     )
     from backend.database import get_db, init_db
     from backend.crud import (
@@ -22,7 +21,6 @@ try:
         get_patient_by_id,
         delete_patient,
         delete_all_patients,
-        import_bulk_charts,
         get_clinician_by_email,
         get_or_create_clinician
     )
@@ -31,8 +29,7 @@ except ImportError:
     from schemas import (
         HeartDiseaseInput,
         PredictionResponse,
-        PatientSummaryResponse,
-        BulkSyncResponse
+        PatientSummaryResponse
     )
     from database import get_db, init_db
     from crud import (
@@ -43,7 +40,6 @@ except ImportError:
         get_patient_by_id,
         delete_patient,
         delete_all_patients,
-        import_bulk_charts,
         get_clinician_by_email,
         get_or_create_clinician
     )
@@ -350,29 +346,4 @@ def remove_patient(
         )
     return {"message": f"Patient '{patient_id}' and all associated encounters deleted successfully."}
 
-
-@app.post("/api/patients/sync", response_model=BulkSyncResponse)
-def sync_patients_from_backup(
-    payload: Dict[str, Any],
-    db: Session = Depends(get_db),
-    clinician_email: Optional[str] = Query(None)
-):
-    """
-    Bulk import/synchronize JSON patient charts into SQL database, scoped to clinician.
-    """
-    clinician_id = resolve_clinician_id(db, clinician_email)
-    if not clinician_id:
-        return BulkSyncResponse(
-            status="skipped",
-            message="No clinician identified; sync skipped.",
-            imported_patients=0,
-            imported_visits=0
-        )
-    patients_count, visits_count = import_bulk_charts(db, payload, clinician_id)
-    return BulkSyncResponse(
-        status="success",
-        message=f"Successfully synchronized {patients_count} patient(s) and {visits_count} encounter(s) into SQL database.",
-        imported_patients=patients_count,
-        imported_visits=visits_count
-    )
 

@@ -113,9 +113,3 @@ class PatientSummaryResponse(BaseModel):
     visits: int
     latestResult: Optional[Dict[str, Any]] = None
 
-
-class BulkSyncResponse(BaseModel):
-    status: str
-    message: str
-    imported_patients: int
-    imported_visits: int
