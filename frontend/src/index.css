@@ -1675,6 +1675,7 @@ select.error {
   margin-bottom: 18px;
 }
 
+.roster-header-actions,
 .roster-backup-actions {
   display: flex;
   gap: 8px;
@@ -3127,12 +3128,14 @@ select.error {
     gap: 12px;
   }
 
+  .roster-header-actions,
   .roster-backup-actions {
     width: 100%;
     flex-wrap: wrap;
     gap: 8px;
   }
 
+  .roster-header-actions .btn-chip,
   .roster-backup-actions .btn-chip {
     flex: 1 1 auto;
     text-align: center;

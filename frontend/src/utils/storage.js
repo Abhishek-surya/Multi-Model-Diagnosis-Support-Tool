@@ -44,27 +44,3 @@ export function saveTheme(theme) {
   }
 }
 
-export function exportChartsAsJson(charts) {
-  const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(charts, null, 2));
-  const downloadAnchor = document.createElement('a');
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-  downloadAnchor.setAttribute('href', dataStr);
-  downloadAnchor.setAttribute('download', `heartcare-patient-roster-backup-${timestamp}.json`);
-  document.body.appendChild(downloadAnchor);
-  downloadAnchor.click();
-  downloadAnchor.remove();
-}
-
-export function parseImportedJson(jsonText) {
-  const parsed = JSON.parse(jsonText);
-  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    throw new Error('Invalid file format. Expected a patient records object.');
-  }
-  // Validate basic shape
-  Object.entries(parsed).forEach(([id, record]) => {
-    if (!record || typeof record !== 'object' || !Array.isArray(record.visits)) {
-      throw new Error(`Record for patient ${id} is malformed.`);
-    }
-  });
-  return parsed;
-}

@@ -376,14 +376,3 @@ def sync_patients_from_backup(
         imported_visits=visits_count
     )
 
-
-@app.get("/api/patients/export/json")
-def export_database_as_json(
-    db: Session = Depends(get_db),
-    clinician_email: Optional[str] = Query(None)
-):
-    """Export complete SQL database as downloadable JSON backup format, scoped to clinician."""
-    clinician_id = resolve_clinician_id(db, clinician_email)
-    if not clinician_id:
-        return {}
-    return get_all_patients_charts(db, clinician_id)

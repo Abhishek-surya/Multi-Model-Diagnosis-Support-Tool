@@ -453,43 +453,6 @@ export default function App() {
     }
   };
 
-  const handleImportBackup = async (parsedCharts) => {
-    setCharts((prev) => {
-      const merged = { ...prev, ...parsedCharts };
-      saveCharts(merged);
-      return merged;
-    });
-
-    if (user?.email) {
-      const emailParam = encodeURIComponent(user.email);
-      const syncUrl = API_BASE_URL
-        ? `${API_BASE_URL}/api/patients/sync?clinician_email=${emailParam}`
-        : `/api/patients/sync?clinician_email=${emailParam}`;
-      try {
-        let res = await fetch(syncUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(parsedCharts)
-        });
-        if (!res.ok && !API_BASE_URL) {
-          await fetch(`http://127.0.0.1:8000/api/patients/sync?clinician_email=${emailParam}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(parsedCharts)
-          });
-        }
-      } catch {
-        if (!API_BASE_URL) {
-          await fetch(`http://127.0.0.1:8000/api/patients/sync?clinician_email=${emailParam}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(parsedCharts)
-          }).catch(() => {});
-        }
-      }
-    }
-  };
-
   const patientList = useMemo(() => {
     return Object.entries(charts).map(([id, record]) => {
       const latestVisit = record.visits[record.visits.length - 1];
@@ -571,7 +534,6 @@ export default function App() {
               onOpenVisitReport={viewVisitReport}
               onDeletePatient={handleDeletePatient}
               onClearAllPatients={handleClearAllPatients}
-              onImportBackup={handleImportBackup}
             />
           )}
 
