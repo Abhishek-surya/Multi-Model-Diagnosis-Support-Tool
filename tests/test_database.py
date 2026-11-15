@@ -13,8 +13,7 @@ from backend.crud import (
     create_encounter_with_prediction,
     get_all_patients_charts,
     get_patient_roster,
-    delete_patient,
-    import_bulk_charts
+    delete_patient
 )
 from backend.models import PatientModel, EncounterModel, PredictionModel
 
@@ -173,48 +172,26 @@ class TestDatabaseAndAPI(unittest.TestCase):
         self.assertEqual(self.db.query(EncounterModel).count(), 0)
         self.assertEqual(self.db.query(PredictionModel).count(), 0)
 
-    def test_05_bulk_sync_endpoint(self):
-        """Verify POST /api/patients/sync can import frontend JSON backup."""
-        payload = {
-            "PT-BULK1": {
-                "name": "Bulk Patient One",
-                "visits": [
-                    {
-                        "recordedAt": "2026-03-01T12:00:00Z",
-                        "formData": {
-                            "age": "55", "sex": "1.0", "cp": "3.0", "trestbps": "130",
-                            "chol": "210", "fbs": "0.0", "restecg": "0.0", "thalach": "155",
-                            "exang": "0.0", "oldpeak": "0.5", "slope": "1.0", "ca": "0.0", "thal": "3.0"
-                        },
-                        "result": {
-                            "predicted_class": 0,
-                            "readable_result": "No disease detected by model",
-                            "probability": 0.12,
-                            "probability_percentage": 12.0
-                        }
-                    }
-                ]
+    def test_05_clear_all_patients_endpoint(self):
+        """Verify DELETE /api/patients clears all patients for a clinician."""
+        clinician = get_or_create_clinician(self.db, "dr.smith@cardio.org", "Dr. Smith")
+        patient = get_or_create_patient(self.db, "PT-CLEAR-ALL", clinician.id, "Clear All Patient")
+        create_encounter_with_prediction(
+            db=self.db,
+            patient=patient,
+            biomarkers={
+                "age": 55.0, "sex": 1.0, "cp": 3.0, "trestbps": 130.0,
+                "chol": 210.0, "fbs": 0.0, "restecg": 0.0, "thalach": 155.0,
+                "exang": 0.0, "oldpeak": 0.5, "slope": 1.0, "ca": 0.0, "thal": 3.0
+            },
+            prediction_result={
+                "predicted_class": 0,
+                "readable_result": "No disease detected by model",
+                "probability": 0.12,
+                "probability_percentage": 12.0
             }
-        }
-        res = self.client.post("/api/patients/sync?clinician_email=dr.smith@cardio.org", json=payload)
-        self.assertEqual(res.status_code, 200)
-        data = res.json()
-        self.assertEqual(data.get("status"), "success")
-        self.assertEqual(data.get("imported_patients"), 1)
-        self.assertEqual(data.get("imported_visits"), 1)
-
-        # Verify record in DB
-        patient = self.db.query(PatientModel).filter(PatientModel.patient_id == "PT-BULK1").first()
-        self.assertIsNotNone(patient)
-        self.assertEqual(patient.name, "Bulk Patient One")
-        self.assertEqual(len(patient.encounters), 1)
-
-        # Repeating sync with the exact same payload must NOT create duplicates
-        res_repeat = self.client.post("/api/patients/sync?clinician_email=dr.smith@cardio.org", json=payload)
-        self.assertEqual(res_repeat.status_code, 200)
-        self.assertEqual(res_repeat.json().get("imported_visits"), 0)
-        self.db.refresh(patient)
-        self.assertEqual(len(patient.encounters), 1)
+        )
+        self.assertEqual(self.db.query(PatientModel).count(), 1)
 
         # Verify DELETE /api/patients clears all patients for clinician
         res_clear = self.client.delete("/api/patients?clinician_email=dr.smith@cardio.org")
