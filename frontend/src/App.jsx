@@ -471,6 +471,7 @@ export default function App() {
       <SignInPage
         googleClientId={googleClientId}
         onLoginSuccess={handleLoginSuccess}
+        apiBaseUrl={API_BASE_URL}
       />
     );
 

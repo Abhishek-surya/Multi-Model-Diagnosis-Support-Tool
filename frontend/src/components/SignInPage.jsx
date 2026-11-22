@@ -5,7 +5,7 @@ import { GoogleLogin } from '@react-oauth/google';
  * Full-page sign-in screen — shown before the user can access the dashboard.
  * Users must authenticate via Google OAuth or the dev-login before proceeding.
  */
-export function SignInPage({ googleClientId, onLoginSuccess }) {
+export function SignInPage({ googleClientId, onLoginSuccess, apiBaseUrl = '' }) {
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(false);
   const [btnWidth, setBtnWidth] = useState(() => {
@@ -23,36 +23,61 @@ export function SignInPage({ googleClientId, onLoginSuccess }) {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  const sendAuthRequest = async (endpoint, payload) => {
+    const primaryUrl = apiBaseUrl ? `${apiBaseUrl}${endpoint}` : endpoint;
+    let res;
+    try {
+      res = await fetch(primaryUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok && !apiBaseUrl) {
+        res = await fetch(`http://127.0.0.1:8000${endpoint}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+      }
+    } catch (netErr) {
+      if (!apiBaseUrl) {
+        res = await fetch(`http://127.0.0.1:8000${endpoint}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+      } else {
+        throw netErr;
+      }
+    }
+
+    if (!res) {
+      throw new Error('Unable to connect to backend service.');
+    }
+
+    const contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      if (res.status === 404) {
+        throw new Error('Backend API endpoint not found (HTTP 404). Please ensure VITE_API_URL is configured to point to your deployed backend URL.');
+      }
+      throw new Error(`Server returned status ${res.status}. Expected JSON response from backend.`);
+    }
+
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.detail || 'Authentication failed.');
+    }
+    return data;
+  };
+
   const handleGoogleSuccess = async (credentialResponse) => {
     setErrorMsg('');
     setLoading(true);
     try {
-      let res;
-      try {
-        res = await fetch('/api/auth/google', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            credential: credentialResponse.credential,
-            client_id: googleClientId
-          })
-        });
-      } catch {
-        res = await fetch('http://127.0.0.1:8000/api/auth/google', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            credential: credentialResponse.credential,
-            client_id: googleClientId
-          })
-        });
-      }
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.detail || 'Failed to authenticate with Google.');
-      }
-
+      const data = await sendAuthRequest('/api/auth/google', {
+        credential: credentialResponse.credential,
+        client_id: googleClientId
+      });
       onLoginSuccess(data.user, data.token);
     } catch (err) {
       setErrorMsg(err.message || 'Authentication failed. Please try again.');
@@ -69,25 +94,7 @@ export function SignInPage({ googleClientId, onLoginSuccess }) {
         ? { email: 'dr.rivera@heartcare.org', name: 'Dr. Alex Rivera, MD' }
         : { email: 'dr.sharma@heartcare.org', name: 'Dr. Priya Sharma, MD' };
 
-      let res;
-      try {
-        res = await fetch('/api/auth/dev-login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-      } catch {
-        res = await fetch('http://127.0.0.1:8000/api/auth/dev-login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-      }
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.detail || 'Demo sign-in failed.');
-      }
+      const data = await sendAuthRequest('/api/auth/dev-login', payload);
       onLoginSuccess(data.user, data.token);
     } catch (err) {
       setErrorMsg(err.message || 'Demo sign-in failed.');
