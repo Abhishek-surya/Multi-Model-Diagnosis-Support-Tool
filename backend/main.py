@@ -73,6 +73,7 @@ app.add_middleware(
         "http://localhost:5174",
         "http://127.0.0.1:5174",
         "https://multi-model-diagnosis-support-tool.vercel.app",
+        "https://multi-model-diagnosis-support-tool.onrender.com",
     ],
     allow_origin_regex=r"https?://(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|.*\.vercel\.app|.*\.onrender\.com)(:\d+)?",
     allow_credentials=True,

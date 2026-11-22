@@ -31,7 +31,8 @@ import {
   clearClinicianUser
 } from './utils/authStorage';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL ?? '';
+const DEFAULT_BACKEND_URL = 'https://multi-model-diagnosis-support-tool.onrender.com';
+const API_BASE_URL = import.meta.env.VITE_API_URL || (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' ? DEFAULT_BACKEND_URL : '');
 const INITIAL_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '185676187697-dfm3u0g7qbcvlhk80a3t3f7v5tcaesb5.apps.googleusercontent.com';
 
 export default function App() {

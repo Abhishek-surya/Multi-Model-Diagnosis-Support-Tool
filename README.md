@@ -11,7 +11,7 @@ A machine-learning-based **Clinical Decision Support System (CDSS) prototype** t
 | Layer | Hosting Provider | Deployment URL / Details |
 | :--- | :---: | :--- |
 | **Frontend Application** | **Vercel** | [https://multi-model-diagnosis-support-tool.vercel.app/](https://multi-model-diagnosis-support-tool.vercel.app/) |
-| **Backend REST API** | **Render** | `https://<your-backend-service>.onrender.com` (Swagger at `/docs`) |
+| **Backend REST API** | **Render** | [https://multi-model-diagnosis-support-tool.onrender.com](https://multi-model-diagnosis-support-tool.onrender.com) (Interactive Swagger UI: [/docs](https://multi-model-diagnosis-support-tool.onrender.com/docs)) |
 | **Machine Learning Models** | **Render (In-Memory)** | Serialized pipeline (`models/best_model_pipeline.joblib`) loaded on startup |
 | **Relational Database** | **Render / SQLite (PostgreSQL compatible)** | Scoped multi-clinician SQL tables via SQLAlchemy (`heartcare.db`) |
 
