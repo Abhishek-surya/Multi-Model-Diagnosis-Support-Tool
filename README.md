@@ -6,6 +6,17 @@ A machine-learning-based **Clinical Decision Support System (CDSS) prototype** t
 
 ---
 
+## 🌐 Live Deployments
+
+| Layer | Hosting Provider | Deployment URL / Details |
+| :--- | :---: | :--- |
+| **Frontend Application** | **Vercel** | [https://multi-model-diagnosis-support-tool.vercel.app/](https://multi-model-diagnosis-support-tool.vercel.app/) |
+| **Backend REST API** | **Render** | `https://<your-backend-service>.onrender.com` (Swagger at `/docs`) |
+| **Machine Learning Models** | **Render (In-Memory)** | Serialized pipeline (`models/best_model_pipeline.joblib`) loaded on startup |
+| **Relational Database** | **Render / SQLite (PostgreSQL compatible)** | Scoped multi-clinician SQL tables via SQLAlchemy (`heartcare.db`) |
+
+---
+
 ## 📌 Project Overview
 
 The **Multi-Model Diagnosis Support Tool** bridges advanced data science with healthcare workflow design. The system evaluates candidate classification models (Logistic Regression, Support Vector Machines, Random Forests), combines their predictive strengths through ensemble strategies, and provides an end-to-end clinical workspace for physicians.
@@ -16,9 +27,9 @@ The **Multi-Model Diagnosis Support Tool** bridges advanced data science with he
 * **Explainable AI (XAI)**: Quantifies biomarker-level attribution (positive and protective risk drivers) for each prediction.
 * **Interactive "What-If" Counterfactual Simulator**: Allows clinicians to simulate potential biomarker adjustments (e.g., lowering cholesterol, reducing blood pressure) and see instantaneous probability impact.
 * **Secure Google OAuth & Clinician Authentication**: Dedicated sign-in portal supporting Google Workspace accounts and rapid demo profiles.
-* **Clinician-Scoped Relational Database**: SQLite persistence via SQLAlchemy where patient charts, encounters, and predictions are strictly isolated per clinician.
-* **Longitudinal Patient Roster**: Tracks historical visits, vital trajectories, and metric changes over time with JSON export/import backup support.
-* **Modern Clinical UI**: Built with React and Vite featuring responsive layouts, dark/light theme switching, and print-ready consultation summaries.
+* **Clinician-Scoped Relational Database**: SQL persistence via SQLAlchemy where patient charts, encounters, and predictions are strictly isolated per clinician.
+* **Longitudinal Patient Roster**: Tracks historical visits, vital trajectories, and metric changes over time backed by relational database storage.
+* **Modern Clinical UI**: Built with React and Vite featuring responsive layouts across mobile, tablet, and desktop, dark/light theme switching, and print-ready consultation summaries.
 
 ---
 
