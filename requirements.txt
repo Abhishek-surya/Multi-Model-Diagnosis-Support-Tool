@@ -21,3 +21,4 @@ seaborn==0.13.2
 six==1.17.0
 threadpoolctl==3.7.0
 uvicorn>=0.28.0
+SQLAlchemy>=2.0.0
