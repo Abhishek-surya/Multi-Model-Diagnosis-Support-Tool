@@ -99,6 +99,12 @@ try:
         loaded_model = joblib.load(FALLBACK_MODEL_PATH)
     else:
         model_load_error = f"Model file not found at {MODEL_PATH} or {FALLBACK_MODEL_PATH}"
+
+    # Compatibility shim for sklearn 1.5.2 loading models saved in newer sklearn versions
+    if loaded_model is not None and hasattr(loaded_model, "steps"):
+        for _, step in loaded_model.steps:
+            if "Logistic" in type(step).__name__ and not hasattr(step, "multi_class"):
+                step.multi_class = "auto"
 except Exception as e:
     model_load_error = f"Failed to load model pipeline: {str(e)}"
 

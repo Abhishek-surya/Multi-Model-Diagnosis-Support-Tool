@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { calculateSimulatedRisk } from '../utils/xaiCalculator';
 
-export function WhatIfSimulator({ formData }) {
+export function WhatIfSimulator({ formData, baselineProbability }) {
   const [activeTab, setActiveTab] = useState('all');
 
   // Complete 13-feature counterfactual state
@@ -22,8 +22,8 @@ export function WhatIfSimulator({ formData }) {
   });
 
   const simulation = useMemo(() => {
-    return calculateSimulatedRisk(formData, modifications);
-  }, [formData, modifications]);
+    return calculateSimulatedRisk(formData, modifications, baselineProbability);
+  }, [formData, modifications, baselineProbability]);
 
   // Identify how many and which fields have been modified from encounter baseline
   const modifiedFieldsList = useMemo(() => {
