@@ -12,7 +12,7 @@ export function Topbar({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const headerRef = useRef(null);
 
-  // Close mobile drawer when pressing Escape or clicking outside
+  // Close mobile drawer when pressing Escape, clicking outside, or resizing to desktop
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
@@ -26,12 +26,20 @@ export function Topbar({
       }
     };
 
+    const handleResize = () => {
+      if (window.innerWidth > 900) {
+        setMobileMenuOpen(false);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
     if (mobileMenuOpen) {
       document.addEventListener('keydown', handleKeyDown);
       document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
+      window.removeEventListener('resize', handleResize);
       document.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('mousedown', handleClickOutside);
     };
@@ -54,30 +62,6 @@ export function Topbar({
             <span className="brand-sub">Clinician Workspace</span>
           </span>
         </button>
-
-        {/* Desktop Navigation */}
-        <nav className="nav desktop-nav" aria-label="Main navigation">
-          <NavButton active={page === 'home'} onClick={() => handleNavClick('home')}>
-            Dashboard
-          </NavButton>
-          <NavButton active={page === 'assessment'} onClick={() => handleNavClick('assessment')}>
-            New screening
-          </NavButton>
-          <NavButton active={page === 'history'} onClick={() => handleNavClick('history')}>
-            Patient roster
-          </NavButton>
-          <NavButton active={page === 'overview'} onClick={() => handleNavClick('overview')}>
-            Reference ranges
-          </NavButton>
-          <NavButton active={page === 'tips'} onClick={() => handleNavClick('tips')}>
-            Counseling points
-          </NavButton>
-          {hasResult && (
-            <NavButton active={page === 'results'} onClick={() => handleNavClick('results')}>
-              Prediction report
-            </NavButton>
-          )}
-        </nav>
 
         <div className="topbar-actions">
           {user && (
@@ -143,6 +127,30 @@ export function Topbar({
           </button>
         </div>
       </div>
+
+      {/* Desktop Sub-Navigation Row */}
+      <nav className="nav desktop-nav" aria-label="Main navigation">
+        <NavButton active={page === 'home'} onClick={() => handleNavClick('home')}>
+          Dashboard
+        </NavButton>
+        <NavButton active={page === 'assessment'} onClick={() => handleNavClick('assessment')}>
+          New screening
+        </NavButton>
+        <NavButton active={page === 'history'} onClick={() => handleNavClick('history')}>
+          Patient roster
+        </NavButton>
+        <NavButton active={page === 'overview'} onClick={() => handleNavClick('overview')}>
+          Reference ranges
+        </NavButton>
+        <NavButton active={page === 'tips'} onClick={() => handleNavClick('tips')}>
+          Counseling points
+        </NavButton>
+        {hasResult && (
+          <NavButton active={page === 'results'} onClick={() => handleNavClick('results')}>
+            Prediction report
+          </NavButton>
+        )}
+      </nav>
 
       {/* Mobile Drawer Dropdown */}
       {mobileMenuOpen && (
