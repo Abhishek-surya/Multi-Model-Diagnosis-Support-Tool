@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any, List
 from sqlalchemy.orm import Session
-from models import PatientModel, EncounterModel, PredictionModel, ClinicianModel, utc_now
+from backend.models import PatientModel, EncounterModel, PredictionModel, ClinicianModel, utc_now
 
 
 def normalize_patient_id(val: str) -> str:

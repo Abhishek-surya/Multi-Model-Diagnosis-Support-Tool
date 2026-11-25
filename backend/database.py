@@ -1,8 +1,8 @@
 import os
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import declarative_base, sessionmaker
-from sqlalchemy.pool import NullPool
 
+# Default to a local SQLite database file in the project root
 DEFAULT_DB_PATH = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "heartcare.db"
@@ -13,12 +13,12 @@ is_sqlite = DATABASE_URL.startswith("sqlite")
 
 engine = create_engine(
     DATABASE_URL,
-    connect_args={"check_same_thread": False, "timeout": 10} if is_sqlite else {},
-    poolclass=NullPool if is_sqlite else None,
-    pool_pre_ping=False if is_sqlite else True,
+    connect_args={"check_same_thread": False, "timeout": 30} if is_sqlite else {},
+    pool_pre_ping=True,
     echo=False
 )
 
+# Enable WAL mode for SQLite to allow concurrent reads while writing
 if is_sqlite:
     @event.listens_for(engine, "connect")
     def _set_sqlite_pragma(dbapi_conn, connection_record):
@@ -34,6 +34,7 @@ Base = declarative_base()
 
 
 def get_db():
+    """FastAPI dependency to yield a database session and safely close it."""
     db = SessionLocal()
     try:
         yield db
@@ -42,5 +43,7 @@ def get_db():
 
 
 def init_db():
-    import models  # noqa: F401
+    """Create all database tables if they do not exist."""
+    # Import models here so Base knows about all tables
+    import backend.models  # noqa: F401
     Base.metadata.create_all(bind=engine)
