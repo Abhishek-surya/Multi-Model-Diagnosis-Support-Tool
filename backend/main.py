@@ -16,13 +16,13 @@ for _p in (str(_repo_dir), str(_backend_dir)):
         sys.path.insert(0, _p)
 
 try:
-    from backend.schemas import (
+    from schemas import (
         HeartDiseaseInput,
         PredictionResponse,
         PatientSummaryResponse
     )
-    from backend.database import get_db, init_db
-    from backend.crud import (
+    from database import get_db, init_db
+    from crud import (
         get_or_create_patient,
         create_encounter_with_prediction,
         get_all_patients_charts,
@@ -33,29 +33,9 @@ try:
         get_clinician_by_email,
         get_or_create_clinician
     )
-    from backend.auth import router as auth_router
+    from auth import router as auth_router
 except ModuleNotFoundError as _mnf:
-    if "backend" in str(_mnf):
-        from schemas import (
-            HeartDiseaseInput,
-            PredictionResponse,
-            PatientSummaryResponse
-        )
-        from database import get_db, init_db
-        from crud import (
-            get_or_create_patient,
-            create_encounter_with_prediction,
-            get_all_patients_charts,
-            get_patient_roster,
-            get_patient_by_id,
-            delete_patient,
-            delete_all_patients,
-            get_clinician_by_email,
-            get_or_create_clinician
-        )
-        from auth import router as auth_router
-    else:
-        raise
+    raise
 
 # 1. Initialize FastAPI application
 app = FastAPI(

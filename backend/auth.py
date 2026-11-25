@@ -6,27 +6,17 @@ from fastapi import APIRouter, HTTPException, Depends, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-# Ensure repo and backend dirs are discoverable in sys.path
 _backend_dir = Path(__file__).resolve().parent
 _repo_dir = _backend_dir.parent
 for _p in (str(_repo_dir), str(_backend_dir)):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
-try:
-    from google.oauth2 import id_token
-    from google.auth.transport import requests
-    from google.auth.exceptions import GoogleAuthError
-    GOOGLE_AUTH_AVAILABLE = True
-except ImportError:
-    id_token = None
-    requests = None
-    GoogleAuthError = Exception
-    GOOGLE_AUTH_AVAILABLE = False
+GOOGLE_AUTH_AVAILABLE = None
 
 try:
-    from backend.database import get_db
-    from backend.crud import get_or_create_clinician, get_clinician_by_email
+    from database import get_db
+    from crud import get_or_create_clinician, get_clinician_by_email
 except ImportError:
     from database import get_db
     from crud import get_or_create_clinician, get_clinician_by_email
@@ -99,10 +89,15 @@ def authenticate_with_google(
             detail="Google ID token credential must not be empty."
         )
 
-    if not GOOGLE_AUTH_AVAILABLE:
+    # Lazy import — avoids network cert fetch at startup
+    try:
+        from google.oauth2 import id_token
+        from google.auth.transport import requests as g_requests
+        from google.auth.exceptions import GoogleAuthError
+    except ImportError:
         raise HTTPException(
             status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail="Google authentication library (google-auth) is not available on this server."
+            detail="google-auth library is not installed on this server."
         )
 
     expected_client_id = get_google_client_id() or (payload.client_id or "").strip() or None
@@ -111,7 +106,7 @@ def authenticate_with_google(
         # Cryptographically verify the Google token signature and audience
         idinfo = id_token.verify_oauth2_token(
             token_str,
-            requests.Request(),
+            g_requests.Request(),
             audience=expected_client_id
         )
 
