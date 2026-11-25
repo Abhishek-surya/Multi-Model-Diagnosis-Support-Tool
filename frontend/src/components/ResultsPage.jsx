@@ -190,7 +190,7 @@ export function ResultsPage({
       <XaiAttributionPanel formData={formData} />
 
       {/* 3. Counterfactual "What-If" Simulator */}
-      <WhatIfSimulator formData={formData} />
+      <WhatIfSimulator formData={formData} baselineProbability={probPercent} />
     </div>
   );
 }

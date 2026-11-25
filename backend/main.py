@@ -16,13 +16,13 @@ for _p in (str(_repo_dir), str(_backend_dir)):
         sys.path.insert(0, _p)
 
 try:
-    from schemas import (
+    from backend.schemas import (
         HeartDiseaseInput,
         PredictionResponse,
         PatientSummaryResponse
     )
-    from database import get_db, init_db
-    from crud import (
+    from backend.database import get_db, init_db
+    from backend.crud import (
         get_or_create_patient,
         create_encounter_with_prediction,
         get_all_patients_charts,
@@ -33,9 +33,29 @@ try:
         get_clinician_by_email,
         get_or_create_clinician
     )
-    from auth import router as auth_router
+    from backend.auth import router as auth_router
 except ModuleNotFoundError as _mnf:
-    raise
+    if "backend" in str(_mnf):
+        from schemas import (
+            HeartDiseaseInput,
+            PredictionResponse,
+            PatientSummaryResponse
+        )
+        from database import get_db, init_db
+        from crud import (
+            get_or_create_patient,
+            create_encounter_with_prediction,
+            get_all_patients_charts,
+            get_patient_roster,
+            get_patient_by_id,
+            delete_patient,
+            delete_all_patients,
+            get_clinician_by_email,
+            get_or_create_clinician
+        )
+        from auth import router as auth_router
+    else:
+        raise
 
 # 1. Initialize FastAPI application
 app = FastAPI(
@@ -79,6 +99,12 @@ try:
         loaded_model = joblib.load(FALLBACK_MODEL_PATH)
     else:
         model_load_error = f"Model file not found at {MODEL_PATH} or {FALLBACK_MODEL_PATH}"
+
+    # Compatibility shim for sklearn 1.5.2 loading models saved in newer sklearn versions
+    if loaded_model is not None and hasattr(loaded_model, "steps"):
+        for _, step in loaded_model.steps:
+            if "Logistic" in type(step).__name__ and not hasattr(step, "multi_class"):
+                step.multi_class = "auto"
 except Exception as e:
     model_load_error = f"Failed to load model pipeline: {str(e)}"
 

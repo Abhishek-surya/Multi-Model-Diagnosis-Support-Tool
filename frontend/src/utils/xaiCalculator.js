@@ -155,16 +155,28 @@ export function calculateFeatureAttributions(formData) {
 /**
  * Computes counterfactual "What-If" simulated risk when modifiable biomarkers are adjusted.
  */
-export function calculateSimulatedRisk(baseFormData, modifiedFields) {
+export function calculateSimulatedRisk(baseFormData, modifiedFields, overrideBaseProbability = null) {
   const simulatedData = { ...baseFormData, ...modifiedFields };
   const baseResult = calculateFeatureAttributions(baseFormData);
   const simulatedResult = calculateFeatureAttributions(simulatedData);
 
-  const delta = Math.round((simulatedResult.probabilityPercentage - baseResult.probabilityPercentage) * 10) / 10;
+  const baseProbability = overrideBaseProbability !== null
+    ? overrideBaseProbability
+    : baseResult.probabilityPercentage;
+
+  const jsBaseline = baseResult.probabilityPercentage || 1;
+  const jsSimulated = simulatedResult.probabilityPercentage;
+  const jsDelta = jsSimulated - jsBaseline;
+
+  const simulatedProbability = Math.min(99.9, Math.max(0.1,
+    Math.round((baseProbability + jsDelta) * 10) / 10
+  ));
+
+  const delta = Math.round((simulatedProbability - baseProbability) * 10) / 10;
 
   return {
-    baseProbability: baseResult.probabilityPercentage,
-    simulatedProbability: simulatedResult.probabilityPercentage,
+    baseProbability,
+    simulatedProbability,
     delta,
     isRiskReduced: delta < 0,
     reductionMagnitude: Math.abs(delta)
