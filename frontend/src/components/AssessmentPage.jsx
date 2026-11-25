@@ -81,7 +81,12 @@ export function AssessmentPage({
               />
             </Field>
 
-            <Field id="patientName" label="Patient Full Name" error={fieldErrors.patientName}>
+            <Field
+              id="patientName"
+              label="Patient Full Name"
+              hint="Full legal name for clinical chart"
+              error={fieldErrors.patientName}
+            >
               <input
                 id="patientName"
                 name="patientName"
@@ -93,7 +98,12 @@ export function AssessmentPage({
               />
             </Field>
 
-            <Field id="age" label="Age (years)" error={fieldErrors.age}>
+            <Field
+              id="age"
+              label="Age (years)"
+              hint="Patient age at time of screening"
+              error={fieldErrors.age}
+            >
               <input
                 id="age"
                 name="age"
@@ -107,7 +117,12 @@ export function AssessmentPage({
               />
             </Field>
 
-            <Field id="sex" label="Biological Sex" error={fieldErrors.sex}>
+            <Field
+              id="sex"
+              label="Biological Sex"
+              hint="Assigned sex for cardiovascular risk baseline"
+              error={fieldErrors.sex}
+            >
               <select
                 id="sex"
                 name="sex"
@@ -158,6 +173,7 @@ export function AssessmentPage({
             <Field
               id="trestbps"
               label="Resting Blood Pressure (mm Hg)"
+              hint="Systolic pressure at rest (normal <120)"
               liveBadge={getBpBadge(formData.trestbps)}
               error={fieldErrors.trestbps}
             >
@@ -177,6 +193,7 @@ export function AssessmentPage({
             <Field
               id="chol"
               label="Serum Cholesterol (mg/dL)"
+              hint="Total serum cholesterol (desirable <200)"
               liveBadge={getCholBadge(formData.chol)}
               error={fieldErrors.chol}
             >
@@ -196,6 +213,7 @@ export function AssessmentPage({
             <Field
               id="fbs"
               label="Fasting Blood Sugar > 120 mg/dL"
+              hint="Glycemic threshold indicator"
               error={fieldErrors.fbs}
             >
               <select
@@ -220,6 +238,7 @@ export function AssessmentPage({
             <Field
               id="restecg"
               label="Resting ECG Results"
+              hint="Baseline 12-lead electrocardiogram"
               error={fieldErrors.restecg}
             >
               <select
@@ -239,6 +258,7 @@ export function AssessmentPage({
             <Field
               id="thalach"
               label="Maximum Heart Rate Achieved (bpm)"
+              hint="Peak heart rate during exercise stress"
               liveBadge={getThalachBadge(formData.thalach)}
               error={fieldErrors.thalach}
             >
@@ -258,6 +278,7 @@ export function AssessmentPage({
             <Field
               id="exang"
               label="Exercise-Induced Angina"
+              hint="Chest pain provoked by exertion"
               error={fieldErrors.exang}
             >
               <select
@@ -297,6 +318,7 @@ export function AssessmentPage({
             <Field
               id="slope"
               label="Peak Exercise ST Slope"
+              hint="ST segment slope at peak stress"
               error={fieldErrors.slope}
             >
               <select

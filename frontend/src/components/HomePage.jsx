@@ -45,20 +45,58 @@ export function HomePage({
       {/* Enhanced Statistics Row */}
       <section className="stat-row">
         <article className="stat-card">
-          <span>Patients On File</span>
+          <div className="stat-card-top">
+            <span>Patients On File</span>
+            <div className="stat-icon-badge" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                <circle cx="9" cy="7" r="4" />
+                <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+              </svg>
+            </div>
+          </div>
           <strong>{patientList.length}</strong>
+          <p className="stat-card-sub">Active clinician roster</p>
         </article>
         <article className="stat-card">
-          <span>Total Encounters</span>
+          <div className="stat-card-top">
+            <span>Total Encounters</span>
+            <div className="stat-icon-badge stat-icon-blue" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+              </svg>
+            </div>
+          </div>
           <strong>{patientList.reduce((sum, item) => sum + item.visits, 0)}</strong>
+          <p className="stat-card-sub">Recorded clinical visits</p>
         </article>
         <article className="stat-card stat-attention">
-          <span>High Risk (Class 1)</span>
+          <div className="stat-card-top">
+            <span>High Risk (Class 1)</span>
+            <div className="stat-icon-badge stat-icon-hazard" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                <line x1="12" y1="9" x2="12" y2="13" />
+                <line x1="12" y1="17" x2="12.01" y2="17" />
+              </svg>
+            </div>
+          </div>
           <strong className="text-attention">{highRiskCount}</strong>
+          <p className="stat-card-sub">Positive prediction (≥50%)</p>
         </article>
         <article className="stat-card stat-stable">
-          <span>Low Risk (Class 0)</span>
+          <div className="stat-card-top">
+            <span>Low Risk (Class 0)</span>
+            <div className="stat-icon-badge stat-icon-safe" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                <path d="m9 12 2 2 4-4" />
+              </svg>
+            </div>
+          </div>
           <strong className="text-stable">{lowRiskCount}</strong>
+          <p className="stat-card-sub">Negative prediction (&lt;50%)</p>
         </article>
       </section>
 

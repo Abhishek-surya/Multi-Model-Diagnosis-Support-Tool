@@ -101,9 +101,12 @@ button, input, select {
    ========================================================================== */
 
 .topbar {
-  background: var(--bg-card);
+  background: color-mix(in srgb, var(--bg-card) 88%, transparent);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--border-color);
-  padding: 10px 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+  padding: 10px 20px;
   position: sticky;
   top: 0;
   z-index: 50;
@@ -196,7 +199,8 @@ button, input, select {
 .nav-link.active {
   background: var(--primary-light);
   color: var(--primary);
-  font-weight: 800;
+  font-weight: 700;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 28%, transparent);
 }
 
 .topbar-actions {
@@ -3439,4 +3443,292 @@ select.error {
     display: flex;
     justify-content: center;
   }
+}
+
+/* ==========================================================================
+   Visual Polish & Micro-Interactions
+   ========================================================================== */
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.metric-value,
+.stat-value,
+.sim-val,
+.biomarker-value,
+.risk-gauge-header strong {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.card {
+  box-shadow: var(--shadow-md);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.stat-card,
+.biomarker-tile,
+.patient-row {
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.stat-card:hover,
+.biomarker-tile:hover,
+.patient-row:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--primary) 28%, transparent);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+}
+
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--primary) 38%, transparent);
+  filter: brightness(1.04);
+}
+
+.btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+/* ==========================================================================
+   Header Center Status Pill & Ambient ECG Watermark Canvas
+   ========================================================================== */
+
+.topbar-center-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: var(--bg-card-alt);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.topbar-center-badge .status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--safe);
+  box-shadow: 0 0 8px var(--safe);
+}
+
+.topbar-center-badge .badge-divider {
+  opacity: 0.45;
+}
+
+@media (max-width: 960px) {
+  .topbar-center-badge {
+    display: none;
+  }
+}
+
+.app {
+  position: relative;
+  min-height: 100vh;
+  background-image:
+    radial-gradient(ellipse 80% 45% at 50% 0%, color-mix(in srgb, var(--primary) 10%, transparent), transparent 70%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='160' viewBox='0 0 320 160'%3E%3Cpath d='M0 80 H95 L110 80 L122 48 L136 112 L150 32 L164 126 L176 80 L195 80 H320' fill='none' stroke='%2314b8a6' stroke-opacity='0.055' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat, repeat;
+  background-size: 100% 420px, 320px 160px;
+}
+
+/* ==========================================================================
+   Pro Clinical Telemetry Theme: Live ECG Monitor + Glassmorphic Cards
+   ========================================================================== */
+
+@keyframes ecgSweep {
+  0% {
+    background-position: 0 0, 0 0, 0 380px;
+  }
+  100% {
+    background-position: 0 0, 0 0, -480px 380px;
+  }
+}
+
+.app {
+  background-image:
+    radial-gradient(ellipse 90% 50% at 50% -10%, color-mix(in srgb, var(--primary) 16%, transparent), transparent 70%),
+    linear-gradient(to right, color-mix(in srgb, var(--primary) 4%, transparent) 1px, transparent 1px),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='480' height='140' viewBox='0 0 480 140'%3E%3Cpath d='M0 70 H140 L158 70 L172 34 L188 108 L206 16 L224 124 L238 70 L262 70 H480' fill='none' stroke='%2314b8a6' stroke-opacity='0.18' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat, repeat, repeat-x;
+  background-size: 100% 520px, 40px 40px, 480px 140px;
+  background-position: 0 0, 0 0, 0 380px;
+  animation: ecgSweep 14s linear infinite;
+}
+
+/* Glassmorphic Elevated Cards */
+.card,
+.stat-card,
+.info-card,
+.biomarker-tile {
+  background: color-mix(in srgb, var(--bg-card) 84%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid color-mix(in srgb, var(--border-color) 85%, rgba(255, 255, 255, 0.12));
+  box-shadow:
+    0 10px 30px rgba(0, 0, 0, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+/* KPI Stat Cards with Accent Top Borders */
+.stat-card {
+  position: relative;
+  overflow: hidden;
+  border-top: 3px solid var(--primary);
+}
+
+.stat-card:nth-child(2) {
+  border-top-color: #38bdf8;
+}
+
+.stat-card:nth-child(3) {
+  border-top-color: var(--hazard);
+}
+
+.stat-card:nth-child(4) {
+  border-top-color: var(--safe);
+}
+
+.stat-card:hover,
+.info-card:hover,
+.biomarker-tile:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--primary) 45%, var(--border-color));
+  box-shadow:
+    0 16px 36px rgba(0, 0, 0, 0.2),
+    0 0 0 1px color-mix(in srgb, var(--primary) 20%, transparent);
+}
+
+/* Patient Roster Rows */
+.patient-row {
+  background: color-mix(in srgb, var(--bg-card-alt) 80%, transparent);
+  border: 1px solid var(--border-subtle);
+  border-left: 3px solid var(--primary);
+  backdrop-filter: blur(10px);
+}
+
+.patient-row:hover {
+  background: color-mix(in srgb, var(--primary-light) 55%, var(--bg-card));
+  border-color: color-mix(in srgb, var(--primary) 40%, transparent);
+  transform: translateX(3px);
+}
+
+/* Hero Banner Depth */
+.hero-banner {
+  background:
+    radial-gradient(circle at 85% 25%, rgba(45, 212, 191, 0.22), transparent 50%),
+    linear-gradient(135deg, #0b4f4a 0%, #0f766e 48%, #0d3b3e 100%);
+  border: 1px solid rgba(94, 234, 212, 0.22);
+  box-shadow:
+    0 20px 45px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+/* Enhanced KPI Stat Card Layout */
+.stat-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.stat-card strong {
+  font-size: 1.85rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-icon-badge {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--primary) 14%, transparent);
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+.stat-icon-blue {
+  background: rgba(56, 189, 248, 0.14);
+  color: #38bdf8;
+}
+
+.stat-icon-hazard {
+  background: var(--hazard-bg);
+  color: var(--hazard);
+}
+
+.stat-icon-safe {
+  background: var(--safe-bg);
+  color: var(--safe);
+}
+
+.stat-card-sub {
+  margin-top: 6px;
+  font-size: 0.78rem;
+  color: var(--text-subtle);
+  font-weight: 500;
+}
+
+.stat-icon-badge svg {
+  display: block;
+}
+
+/* Structured Clinical Form Section Cards */
+.field-group {
+  background: color-mix(in srgb, var(--bg-card-alt) 55%, transparent);
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  padding: 20px 22px;
+  margin-bottom: 20px;
+}
+
+.field-group h2 {
+  margin-top: 0;
+}
+
+.form-grid .field {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+input[type="number"],
+input[type="text"],
+select {
+  height: 44px;
+  box-sizing: border-box;
+}
+
+/* Patient Roster / Longitudinal History Polish */
+.history-layout {
+  align-items: start;
+}
+
+.history-layout > .card:first-child {
+  position: sticky;
+  top: 112px;
+}
+
+.compare-bar-val,
+.bar-value {
+  white-space: nowrap;
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-variant-numeric: tabular-nums;
 }

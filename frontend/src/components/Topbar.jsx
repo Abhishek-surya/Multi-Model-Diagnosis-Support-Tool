@@ -252,10 +252,17 @@ function NavButton({ active, onClick, children }) {
 
 function HeartIcon() {
   return (
-    <svg viewBox="0 0 32 32" width="28" height="28" fill="none" aria-hidden="true">
+    <svg viewBox="0 0 32 32" width="24" height="24" fill="none" aria-hidden="true">
       <path
-        d="M16 27s-9.5-6.2-12.4-11.4C1.4 12 2.6 7.4 6.8 6.2c2.5-.7 5.1.3 6.6 2.4 1.5-2.1 4.1-3.1 6.6-2.4 4.2 1.2 5.4 5.8 3.2 9.4C25.5 20.8 16 27 16 27z"
+        d="M16 26.8C16 26.8 5 19.6 5 11.8C5 8.1 7.9 5.3 11.4 5.3C13.6 5.3 15.2 6.5 16 8.1C16.8 6.5 18.4 5.3 20.6 5.3C24.1 5.3 27 8.1 27 11.8C27 19.6 16 26.8 16 26.8Z"
         fill="currentColor"
+      />
+      <path
+        d="M8.5 15.5H12L13.6 12L15.6 19.2L17.6 13.5L19.1 15.5H23.5"
+        stroke="var(--bg-card)"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
       />
     </svg>
   );
