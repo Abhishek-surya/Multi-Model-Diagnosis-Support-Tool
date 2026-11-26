@@ -3732,3 +3732,21 @@ select {
   font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
   font-variant-numeric: tabular-nums;
 }
+
+/* Fix Sort-By Dropdown Arrow Padding */
+.sort-select,
+.roster-sort-box .sort-select {
+  padding-right: 36px;
+  min-width: 195px;
+}
+
+/* Fix Mobile Risk Gauge Segment Text Clipping */
+@media (max-width: 640px) {
+  .gauge-segment {
+    font-size: 0.6rem;
+    padding: 0 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
